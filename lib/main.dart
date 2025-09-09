@@ -87,7 +87,7 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _setup() async {
     final initialConn = await Connectivity().checkConnectivity();
-    final hasNet = initialConn != ConnectivityResult.none;
+    final hasNet = initialConn.any((result) => result != ConnectivityResult.none);
     final reachable = hasNet ? await _hasInternet() : false;
     setState(() => _online = reachable);
 
@@ -128,7 +128,6 @@ class _MainPageState extends State<MainPage> {
       }
     }
   }
-  
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +136,6 @@ class _MainPageState extends State<MainPage> {
       height: topPadding,
       color: const Color(0xFFF28C28),
     );
-    
 
     if (!_online) {
       final cs = Theme.of(context).colorScheme;
@@ -150,7 +148,7 @@ class _MainPageState extends State<MainPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.signal_wifi_connected_no_internet_4,
+                  Icons.wifi_off_rounded,
                   size: 120,
                   color: cs.secondary,
                 ),
