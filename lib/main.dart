@@ -4,6 +4,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 const appUrl = 'https://app.silvernote.fr/';
 
@@ -100,7 +101,13 @@ class _MainPageState extends State<MainPage> {
             final can = await _controller.canGoBack();
             if (mounted) setState(() => _canGoBack = can);
           },
-          onNavigationRequest: (req) => NavigationDecision.navigate,
+          onNavigationRequest: (req) {
+            if (Uri.parse(req.url).host.endsWith('google.com') || Uri.parse(req.url).host.contains('clerk.silvernote.fr') || req.url.contains('oauth') || req.url.contains('sign-in') || req.url.contains('sign-up')) {
+              launchUrl(Uri.parse(req.url), mode: LaunchMode.externalApplication);
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
         ),
       )
       ..loadRequest(Uri.parse(appUrl));
@@ -129,7 +136,6 @@ class _MainPageState extends State<MainPage> {
     }
   }
   
-
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top - 7.5;
