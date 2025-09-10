@@ -6,7 +6,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
-const appUrl = 'https://app.silvernote.fr/';
+const appUrl = 'https://test-clerk.dev.silvernote.fr/';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
