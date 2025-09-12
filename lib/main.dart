@@ -4,8 +4,11 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:clerk_flutter/clerk_flutter.dart';
+import 'package:webview_cookie_manager_flutter/webview_cookie_manager.dart';
 
-const appUrl = 'https://app.silvernote.fr/';
+const appUrl = 'https://test-clerk.dev.silvernote.fr/';
+const String clerkPublishableKey = 'KEY_HERE';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,39 +17,99 @@ void main() {
 
 class SilverNoteApp extends StatelessWidget {
   const SilverNoteApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      themeMode: ThemeMode.system,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFF28C28),
-          brightness: Brightness.light,
+    final topPadding = MediaQuery.of(context).padding.top - 7.5;
+    return ClerkAuth(
+      config: ClerkAuthConfig(publishableKey: clerkPublishableKey),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          resizeToAvoidBottomInset: false,
+          body: LayoutBuilder(
+            builder: (context, _) {
+              final inset = MediaQuery.of(context).viewInsets.bottom;
+              final maxShift = 105.0;
+              final shift = inset.clamp(0.0, maxShift);
+          return Stack(
+                children: [
+                  Container(height: topPadding, color: const Color(0xFFF28C28)),
+                Center(
+                child: AnimatedPadding(
+                    padding: EdgeInsets.only(bottom: shift),
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                child: ClerkErrorListener(
+                  child: ClerkErrorListener(
+                    child: ClerkAuthBuilder(
+                      signedInBuilder: (context, auth) {
+                        final s = auth.session;
+                        final id = s?.id;
+                        final tokObj = s?.lastActiveToken;
+                        String? extractJwtFromSessionToken(
+                                Object? tokObj,
+                              ) {
+                                if (tokObj == null) return null;
+                                final s = tokObj.toString();
+                                final key = 'jwt: ';
+                                final i = s.indexOf(key);
+                                if (i == -1) return null;
+                                final start = i + key.length;
+                                var end = s.indexOf('}', start);
+                                if (end == -1) end = s.length;
+                                return s.substring(start, end).trim();
+                              }
+                              final jwt = extractJwtFromSessionToken(tokObj);
+                              debugPrint('JWT len=${jwt?.length} head=${jwt?.substring(0, 20)}');
+                        return AddClerkCookie(sessionId: id, sessionToken: jwt);
+                      },
+                      signedOutBuilder: (context, authState) {
+                        return const ClerkAuthentication();
+                      }
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                ],
+              );
+            },
+          ),
         ),
-        scaffoldBackgroundColor: Colors.white,
       ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFF28C28),
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF121212),
-      ),
-      home: const MainPage(),
     );
   }
 }
 
+class AddClerkCookie extends StatefulWidget {
+  final String? sessionId;
+  final String? sessionToken;
+  const AddClerkCookie({super.key, this.sessionId, this.sessionToken});
+  @override
+  State<AddClerkCookie> createState() => _AddClerkCookieState();
+}
+
+class _AddClerkCookieState extends State<AddClerkCookie> {
+  @override
+  Widget build(BuildContext context) {
+    return MainPage(sessionId: widget.sessionId, sessionToken: widget.sessionToken);
+    }
+ 
+}
+
 class MainPage extends StatefulWidget {
-  const MainPage({super.key});
+  final String? sessionId;
+  final String? sessionToken;
+  const MainPage({super.key, this.sessionId, this.sessionToken});
   @override
   State<MainPage> createState() => _MainPageState();
 }
 
 class _MainPageState extends State<MainPage> {
-  late final WebViewController _controller;
+  String? sessionId;
+  String? sessionToken;
+  late WebViewController controller;
   bool _online = true;
   bool _initialized = false;
   bool _canGoBack = false;
@@ -55,6 +118,8 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     _initConnectivityListener();
+    sessionId = widget.sessionId;
+    sessionToken = widget.sessionToken;
     _setup();
   }
 
@@ -67,7 +132,7 @@ class _MainPageState extends State<MainPage> {
       if (mounted) setState(() => _online = reachable);
       if (reachable && _initialized) {
         try {
-          await _controller.reload();
+          await controller.reload();
         } catch (_) {}
       }
     });
@@ -91,22 +156,52 @@ class _MainPageState extends State<MainPage> {
     final reachable = hasNet ? await _hasInternet() : false;
     setState(() => _online = reachable);
 
-    _controller = WebViewController()
+    controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (_) async {
-            final can = await _controller.canGoBack();
+            final can = await controller.canGoBack();
             if (mounted) setState(() => _canGoBack = can);
           },
           onNavigationRequest: (req) => NavigationDecision.navigate,
         ),
-      )
-      ..loadRequest(Uri.parse(appUrl));
+      );
+      
+
+      if (widget.sessionId != null && widget.sessionToken != null) {
+      final cookieManager = WebviewCookieManager();
+        print("currentToken  " + sessionToken!);
+      final cookieMgr = WebViewCookieManager();
+      final now = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+      print("now  " + now);
+      await cookieMgr.setCookie(WebViewCookie(name: '__client_uat', value: now, domain: '.silvernote.fr', path: '/',));
+      await cookieMgr.setCookie(WebViewCookie(name: '__session', value: sessionToken!, domain: 'test-clerk.dev.silvernote.fr', path: '/'));
+      final gotCookies = await cookieManager.getCookies('https://test-clerk.dev.silvernote.fr');
+      print("cookies are :");
+      for (var item in gotCookies) {
+            print(item);
+        }
+      await controller.loadRequest(Uri.parse(appUrl));
+      print("cookies are : (current) ");
+      for (var item in gotCookies) {
+            print(item);
+        }
+        Future.delayed(const Duration(seconds: 10), () {
+              if (!mounted) return;
+              for (var item in gotCookies) {
+            print(item);
+        }
+        });
+    }else {
+      debugPrint('missing session: id=${widget.sessionId}, tok=${widget.sessionToken}');
+    }
+      
+
 
     if (Platform.isAndroid) {
-      final androidCtrl = _controller.platform as AndroidWebViewController;
+      final androidCtrl = controller.platform as AndroidWebViewController;
       await androidCtrl.setOnShowFileSelector((params) async {
         return <String>[];
       });
@@ -121,7 +216,7 @@ class _MainPageState extends State<MainPage> {
     if (reachable) {
       if (_initialized) {
         try {
-          await _controller.reload();
+          await controller.reload();
         } catch (_) {}
       } else {
         await _setup();
@@ -179,9 +274,9 @@ class _MainPageState extends State<MainPage> {
       canPop: !_canGoBack,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        if (await _controller.canGoBack()) {
-          await _controller.goBack();
-          final can = await _controller.canGoBack();
+        if (await controller.canGoBack()) {
+          await controller.goBack();
+          final can = await controller.canGoBack();
           if (mounted) setState(() => _canGoBack = can);
         }
       },
@@ -191,7 +286,7 @@ class _MainPageState extends State<MainPage> {
             header,
             Expanded(
               child: _initialized
-                  ? WebViewWidget(controller: _controller)
+                  ? WebViewWidget(controller: controller)
                   : const Center(child: CircularProgressIndicator()),
             ),
           ],

@@ -15,6 +15,8 @@ dependencies:
   webview_flutter: ^4.13.0
   webview_flutter_android: ^4.10.1
   flutter_launcher_icons: ^0.14.4
+  clerk_flutter: ^0.0.12-beta
+  webview_cookie_manager_flutter: ^3.0.1
 
 dev_dependencies:
   flutter_test:
