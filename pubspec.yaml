@@ -7,21 +7,21 @@ environment:
   sdk: ^3.9.2
 
 dependencies:
-  connectivity_plus: ^6.1.5
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  http: any
-  webview_flutter: ^4.13.0
-  webview_flutter_android: ^4.10.1
-  flutter_launcher_icons: ^0.14.4
   clerk_flutter: ^0.0.12-beta
+  connectivity_plus: ^7.0.0
+  http: ^1.5.0
+  webview_flutter_android: ^4.10.2
+  webview_flutter: ^4.13.0
   webview_cookie_manager_flutter: ^3.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -29,4 +29,4 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets\icon\favicon.png
+  image_path: assets/icon/favicon.png
