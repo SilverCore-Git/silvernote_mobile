@@ -1,9 +1,4 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:http/http.dart' as http;
 import 'package:clerk_flutter/clerk_flutter.dart';
 
 const appUrl = 'https://test-clerk.dev.silvernote.fr/';
@@ -31,45 +26,27 @@ class SilverNoteApp extends StatelessWidget {
               final inset = MediaQuery.of(context).viewInsets.bottom;
               final maxShift = 105.0;
               final shift = inset.clamp(0.0, maxShift);
-          return Stack(
+              return Stack(
                 children: [
                   Container(height: topPadding, color: const Color(0xFFF28C28)),
-                Center(
-                child: AnimatedPadding(
-                    padding: EdgeInsets.only(bottom: shift),
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOut,
-                child: ClerkErrorListener(
-                  child: ClerkErrorListener(
-                    child: ClerkAuthBuilder(
-                      signedInBuilder: (context, auth) {
-                        final s = auth.session;
-                        final tokObj = s?.lastActiveToken;
-                        String? extractJwtFromSessionToken(
-                                Object? tokObj,
-                              ) {
-                                if (tokObj == null) return null;
-                                final s = tokObj.toString();
-                                final key = 'jwt: ';
-                                final i = s.indexOf(key);
-                                if (i == -1) return null;
-                                final start = i + key.length;
-                                var end = s.indexOf('}', start);
-                                if (end == -1) end = s.length;
-                                return s.substring(start, end).trim();
-                              }
-                              final jwt = extractJwtFromSessionToken(tokObj);
-                              debugPrint('JWT len=${jwt?.length} head=${jwt?.substring(0, 20)}');
-                        return MainPage();
-                      },
-                      signedOutBuilder: (context, authState) {
-                        return const ClerkAuthentication();
-                      }
+                  Center(
+                    child: AnimatedPadding(
+                      padding: EdgeInsets.only(bottom: shift),
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                      child: ClerkErrorListener(
+                        child: ClerkAuthBuilder(
+                          signedInBuilder: (context, auth) {
+                            // Ici on remplace la WebView par un écran classique vide / à compléter
+                            return const MainPage();
+                          },
+                          signedOutBuilder: (context, authState) {
+                            return const ClerkAuthentication();
+                          },
                         ),
                       ),
                     ),
                   ),
-                ),
                 ],
               );
             },
@@ -82,164 +59,147 @@ class SilverNoteApp extends StatelessWidget {
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
+
   @override
   State<MainPage> createState() => _MainPageState();
 }
 
 class _MainPageState extends State<MainPage> {
-  
-  late WebViewController controller;
-  bool _online = true;
-  bool _initialized = false;
-  bool _canGoBack = false;
+  bool isRotating = false;
+  bool ifOpenCreateTag = false;
+  bool tip = false;
+  bool ifDangerCard = false;
+
+  List<Tag> allTags = []; 
+  List<Note> listNotes = [];
+  List<Note> sharedNotes = [];
 
   @override
   void initState() {
     super.initState();
-    _initConnectivityListener();
-    _setup();
+    // TODO : GO TO EDITOR
   }
 
-  Stream<List<ConnectivityResult>>? _connStream;
-  void _initConnectivityListener() {
-    _connStream = Connectivity().onConnectivityChanged;
-    _connStream!.listen((results) async {
-      final hasNet = !results.contains(ConnectivityResult.none);
-      final reachable = hasNet ? await _hasInternet() : false;
-      if (mounted) setState(() => _online = reachable);
-      if (reachable && _initialized) {
-        try {
-          await controller.reload();
-        } catch (_) {}
-      }
+  void reloadList() async {
+    if (isRotating) return;
+
+    setState(() {
+      isRotating = true;
+    });
+
+    // TODO : RELOAD DATA HERE
+
+    setState(() {
+      isRotating = false;
     });
   }
 
-  Future<bool> _hasInternet() async {
-    try {
-      final resp = await http
-          .head(Uri.parse('https://www.google.com/generate_204'))
-          .timeout(const Duration(seconds: 3));
-      return resp.statusCode == 204 ||
-          (resp.statusCode >= 200 && resp.statusCode < 400);
-    } catch (_) {
-      return false;
-    }
+  void addTagFilter(int tagId) {
+    setState(() {
+        // TODO : APPLY FILTER TAGS
+    });
   }
 
-  Future<void> _setup() async {
-    final initialConn = await Connectivity().checkConnectivity();
-    final hasNet = initialConn.any((result) => result != ConnectivityResult.none);
-    final reachable = hasNet ? await _hasInternet() : false;
-    setState(() => _online = reachable);
-
-    controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) async {
-            final can = await controller.canGoBack();
-            if (mounted) setState(() => _canGoBack = can);
-          },
-          onNavigationRequest: (req) => NavigationDecision.navigate,
-        ),
-      );
-      
-
-
-    if (Platform.isAndroid) {
-      final androidCtrl = controller.platform as AndroidWebViewController;
-      await androidCtrl.setOnShowFileSelector((params) async {
-        return <String>[];
-      });
-    }
-
-    setState(() => _initialized = true);
-  }
-
-  Future<void> _retry() async {
-    final reachable = await _hasInternet();
-    if (mounted) setState(() => _online = reachable);
-    if (reachable) {
-      if (_initialized) {
-        try {
-          await controller.reload();
-        } catch (_) {}
-      } else {
-        await _setup();
-      }
-    }
+  void createNewNote() {
+    // TODO : GO TO EDITOR
   }
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top - 7.5;
-    final header = Container(
-      height: topPadding,
-      color: const Color(0xFFF28C28),
-    );
-
-    if (!_online) {
-      final cs = Theme.of(context).colorScheme;
-      return Scaffold(
-        backgroundColor: cs.surface,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.wifi_off_rounded,
-                  size: 120,
-                  color: cs.secondary,
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Pas de connexion internet',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Vérifier la connexion réseau et réessayer.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _retry,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Réessayer'),
-                ),
-              ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('SilverNote'),
+        actions: [
+          GestureDetector(
+            onTap: reloadList,
+            child: RotationTransition(
+              turns: AlwaysStoppedAnimation(isRotating ? 1 : 0),
+              child: const Icon(Icons.refresh),
             ),
           ),
-        ),
-      );
-    }
-
-    return PopScope(
-      canPop: !_canGoBack,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        if (await controller.canGoBack()) {
-          await controller.goBack();
-          final can = await controller.canGoBack();
-          if (mounted) setState(() => _canGoBack = can);
-        }
-      },
-      child: Scaffold(
-        body: Column(
-          children: [
-            header,
-            Expanded(
-              child: _initialized
-                  ? WebViewWidget(controller: controller)
-                  : const Center(child: CircularProgressIndicator()),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Search bar placeholder
+          Container(
+            padding: const EdgeInsets.all(8),
+            child: TextField(
+              decoration: const InputDecoration(labelText: 'Search'),
+              onChanged: (value) {
+                // TODO : ADD RESEARCH
+              },
             ),
-          ],
-        ),
+          ),
+          Container(
+            height: 50,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: allTags.length,
+              itemBuilder: (context, index) {
+                final tag = allTags[index];
+                return GestureDetector(
+                  onTap: () => addTagFilter(tag.id),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: tag.color,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: tag.active ? Colors.black : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(child: Text(tag.name)),
+                  ),
+                );
+              },
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: listNotes.length,
+              itemBuilder: (context, index) {
+                final note = listNotes[index];
+                return ListTile(
+                  title: Text(note.title),
+                  subtitle: Text(note.content),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: createNewNote,
+        child: const Icon(Icons.add),
       ),
     );
   }
+}
+// TODO : EXEMPLES HERE :
+class Tag {
+  final int id;
+  final String name;
+  bool active;
+  final Color color;
+
+  Tag({required this.id, required this.name, this.active = false, required this.color});
+}
+
+class Note {
+  final int id;
+  final String title;
+  final String content;
+  final List<int> tags;
+  final bool pinned;
+
+  Note({
+    required this.id,
+    required this.title,
+    required this.content,
+    required this.tags,
+    required this.pinned,
+  });
 }
