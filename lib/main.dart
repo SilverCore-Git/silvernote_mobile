@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:clerk_flutter/clerk_flutter.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 const appUrl = 'https://test-clerk.dev.silvernote.fr/';
 const String clerkPublishableKey = 'pk_test_aW52aXRpbmctZmluY2gtNTIuY2xlcmsuYWNjb3VudHMuZGV2JA';
@@ -148,7 +149,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void createNewNote() {
-    // Nav vers autre page pour créer note
+    // TODO : Nav vers autre page pour créer note
   }
 
   void openCreateTag() {
@@ -275,7 +276,7 @@ class NavBar extends StatelessWidget {
     required this.onReload,
   });
 
-  @override
+@override
   Widget build(BuildContext context) {
     return Container(
       color: primaryColor,
@@ -285,28 +286,316 @@ class NavBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // TODO SVG logo
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text('SilverNote', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
-            ),
-            GestureDetector(
-              onTap: onReload,
-              child: RotationTransition(
-                turns: AlwaysStoppedAnimation(isRotating ? 1 : 0),
-                child: Container(
-                  width: 45,
-                  height: 32,
-                  // TODO SVG reload icon bg
-                  decoration: const BoxDecoration(
-                    color: Colors.white24,
-                    shape: BoxShape.circle,
+              child: Row(
+                children: [
+                  SvgPicture.asset(
+                    'assets/icon/SilverNote_Logo.svg',
+                    width: 28,
+                    height: 28,
                   ),
-                  child: const Icon(Icons.refresh, color: Colors.white, size: 22, ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'SilverNote',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 22,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: onReload,
+                  child: RotationTransition(
+                    turns: AlwaysStoppedAnimation(isRotating ? 1 : 0),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: const BoxDecoration(
+                        color: Colors.white24,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.refresh,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const SettingsPage()),
+                      );
+                    },
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: const BoxDecoration(
+                        color: Colors.white24,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.settings,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  ThemeMode _theme = ThemeMode.light;
+  Color _accent = const Color(0xFFF28C28);
+
+  static const _bg = Color(0xFF2A2420);
+  static const _sectionText = Colors.white;
+  static const _labelText = Color(0xFFEAE0D7);
+  static const _divider = Color(0x33FFFFFF);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bg,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF3A322D),
+        title: const Text('Paramètres'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        children: [
+          // Paramètres généraux
+          const __SettingsSectionTitle('Paramètres généraux'),
+          const SizedBox(height: 16),
+          __SettingsRowLabelControl(
+            label: 'Theme',
+            control: __ThemeDropdown(
+              value: _theme,
+              onChanged: (m) => setState(() => _theme = m),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: _divider),
+
+          // Paramètres divers
+          const SizedBox(height: 16),
+          const __SettingsSectionTitle('Paramètres divers'),
+          const SizedBox(height: 16),
+          __SettingsRowLabelControl(
+            label: 'Couleur',
+            control: GestureDetector(
+              onTap: _toggleAccent,
+              child: Container(
+                width: 56,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: _accent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFF3B3B3B), width: 1.5),
                 ),
               ),
             ),
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: _divider),
+
+          // Paramètres base de données
+          const SizedBox(height: 16),
+          const __SettingsSectionTitle('Paramètres base de données'),
+          const SizedBox(height: 16),
+
+          __SettingsRowActionRight(
+            label: 'Télécharger la base de donnée',
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFF28C28),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: _onDownload,
+              child: const Text('Télécharger'),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          __SettingsRowActionRight(
+            label: 'Téléverser une base de donnée',
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFF28C28), width: 2),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                backgroundColor: Colors.transparent,
+              ),
+              onPressed: _onUpload,
+              child: const Text('Téléversez un fichier'),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          __SettingsRowActionRight(
+            label: 'Réinitialiser les données',
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFE25524),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: _onReset,
+              child: const Text('Réinitialiser'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toggleAccent() {
+    setState(() {
+      _accent = _accent == const Color(0xFFF28C28) ? const Color(0xFF3B82F6) : const Color(0xFFF28C28);
+    });
+  }
+
+  void _onDownload() {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Téléchargement...')));
+  }
+
+  void _onUpload() {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Téléversement...')));
+  }
+
+  void _onReset() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF3A322D),
+        title: const Text('Réinitialiser les données', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Cette action supprimera toutes les données locales.',
+          style: TextStyle(color: Color(0xFFEAE0D7)),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Color(0xFFE25524)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Réinitialiser'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Données réinitialisées.')));
+    }
+  }
+}
+
+// Widgets privés renommés pour éviter tout conflit
+
+class __SettingsSectionTitle extends StatelessWidget {
+  final String text;
+  const __SettingsSectionTitle(this.text, {super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w800,
+        fontSize: 22,
+      ),
+    );
+  }
+}
+
+class __SettingsRowLabelControl extends StatelessWidget {
+  final String label;
+  final Widget control;
+  const __SettingsRowLabelControl({required this.label, required this.control, super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(label, style: const TextStyle(color: Color(0xFFEAE0D7), fontSize: 16))),
+        control,
+      ],
+    );
+  }
+}
+
+class __SettingsRowActionRight extends StatelessWidget {
+  final String label;
+  final Widget child;
+  const __SettingsRowActionRight({required this.label, required this.child, super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(label, style: const TextStyle(color: Color(0xFFEAE0D7), fontSize: 16))),
+        child,
+      ],
+    );
+  }
+}
+
+class __ThemeDropdown extends StatelessWidget {
+  final ThemeMode value;
+  final ValueChanged<ThemeMode> onChanged;
+  const __ThemeDropdown({required this.value, required this.onChanged, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF5E8),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF3B3B3B), width: 1.5),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<ThemeMode>(
+          value: value,
+          icon: const Icon(Icons.keyboard_arrow_down),
+          items: const [
+            DropdownMenuItem<ThemeMode>(value: ThemeMode.light, child: Text('Claire')),
+            DropdownMenuItem<ThemeMode>(value: ThemeMode.dark, child: Text('Sombre')),
+            DropdownMenuItem<ThemeMode>(value: ThemeMode.system, child: Text('Système')),
           ],
+          onChanged: (ThemeMode? m) {
+            if (m != null) onChanged(m);
+          },
         ),
       ),
     );
