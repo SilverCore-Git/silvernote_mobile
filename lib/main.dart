@@ -2,9 +2,16 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:clerk_flutter/clerk_flutter.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 const appUrl = 'https://test-clerk.dev.silvernote.fr/';
 const String clerkPublishableKey = 'pk_test_aW52aXRpbmctZmluY2gtNTIuY2xlcmsuYWNjb3VudHMuZGV2JA';
+
+//const _cream = Color(0xFFFEF3E7);
+//const _creamSurface = Color(0xFFFFF1E6);
+const _border = Color(0xFF2F2F2F);
+const _textDark = Color(0xFF2A2A2A);
+const _hint = Color(0xFF7F7F7F);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +29,7 @@ class SilverNoteApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
-          resizeToAvoidBottomInset: false,
+          resizeToAvoidBottomInset: true,
           body: LayoutBuilder(
             builder: (context, _) {
               final inset = MediaQuery.of(context).viewInsets.bottom;
@@ -39,7 +46,6 @@ class SilverNoteApp extends StatelessWidget {
                       child: ClerkErrorListener(
                         child: ClerkAuthBuilder(
                           signedInBuilder: (context, auth) {
-                            // Ici on remplace la WebView par un écran classique vide / à compléter
                             return const HomePage();
                           },
                           signedOutBuilder: (context, authState) {
@@ -72,10 +78,8 @@ class _HomePageState extends State<HomePage> {
     Tag(id: 1, name: 'Important', color: Colors.orange, active: false),
     Tag(id: 2, name: 'Travail', color: Colors.blue, active: true),
   ];
-  List<Note> listNotes = [
-    Note(id: 1, title: 'Note 1', content: 'Contenu 1', tags: [1, 2], pinned: true, icon: Icons.note),
-    Note(id: 2, title: 'Note 2', content: 'Contenu 2', tags: [], pinned: false, icon: Icons.note_alt),
-  ];
+  List<Note> listNotes = [];
+  late final List<Note> allNotesSource;
   List<Note> sharedNotes = [
     Note(id: 3, title: 'Note partagée', content: 'Contenu partagé', tags: [], pinned: false, icon: Icons.share),
   ];
@@ -92,6 +96,22 @@ class _HomePageState extends State<HomePage> {
 
   TextEditingController searchController = TextEditingController();
 
+   @override
+  void initState() {
+    super.initState();
+    allNotesSource = [
+      Note(id: 1, title: 'Note 1', content: 'Contenu 1', tags: [1, 2], pinned: true, icon: Icons.note),
+      Note(id: 3, title: 'Note 3', content: 'Contenu 3', tags: [1], pinned: true, icon: Icons.note),
+      Note(id: 4, title: 'Note 4', content: 'Contenu 4', tags: [1], pinned: true, icon: Icons.note),
+      Note(id: 2, title: 'Note 2', content: 'Contenu 2', tags: [], pinned: false, icon: Icons.note_alt),
+      Note(id: 12, title: 'Note 12', content: 'Contenu 12', tags: [1], pinned: true, icon: Icons.note_alt),
+      Note(id: 22, title: 'Note 22', content: 'Contenu 22', tags: [2], pinned: true, icon: Icons.note_alt),
+      Note(id: 32, title: 'Note 32', content: 'Contenu 32', tags: [1], pinned: true, icon: Icons.note_alt),
+      Note(id: 42, title: 'Note 42', content: 'Contenu 42', tags: [2], pinned: true, icon: Icons.note_alt),
+    ];
+    listNotes = List<Note>.from(allNotesSource);
+  }
+
   @override
   void dispose() {
     searchController.dispose();
@@ -105,7 +125,7 @@ class _HomePageState extends State<HomePage> {
     Future.delayed(const Duration(milliseconds: 300), () {
       setState(() {
         isRotating = false;
-        // Rechargez ici vos données
+        // TODO : Reload Data here
       });
     });
   }
@@ -114,7 +134,16 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       final tag = allTags.firstWhere((t) => t.id == tagId);
       tag.active = !tag.active;
-      // appliquer filtres sur notes
+      final activeIds = allTags.where((t) => t.active).map((t) => t.id).toList();
+      if (activeIds.isEmpty) {
+        listNotes = List<Note>.from(allNotesSource);
+        notesViewMode = 'default'; // optionnel
+      return;
+      }
+      listNotes = allNotesSource.where((n) {
+      return n.tags.any((tid) => activeIds.contains(tid));
+          }).toList();
+      notesViewMode = 'default';
     });
   }
 
@@ -146,7 +175,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final primaryColor = const Color(0xFFF28C28);
-    final bgColor = const Color(0xFF111111);
+    final bgColor = const Color(0xFF2A2420);
     //final surfaceColor = const Color(0xFF222222);
     //final textColor = Colors.white;
 
@@ -193,7 +222,8 @@ class _HomePageState extends State<HomePage> {
                 Expanded(
                   child: notesViewMode == 'tag'
                       ? NotesByTagView(allTags: allTags, listNotes: listNotes)
-                      : NotesDefaultView(
+                      : NotesMasonryView(
+                          allTags: allTags,
                           pinnedNotes: listNotes.where((n) => n.pinned).toList(),
                           sharedNotes: sharedNotes,
                           otherNotes: listNotes.where((n) => !n.pinned).toList(),
@@ -257,7 +287,7 @@ class NavBar extends StatelessWidget {
           children: [
             // TODO SVG logo
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Text('SilverNote', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
             ),
             GestureDetector(
@@ -265,14 +295,14 @@ class NavBar extends StatelessWidget {
               child: RotationTransition(
                 turns: AlwaysStoppedAnimation(isRotating ? 1 : 0),
                 child: Container(
-                  width: 32,
+                  width: 45,
                   height: 32,
                   // TODO SVG reload icon bg
                   decoration: const BoxDecoration(
                     color: Colors.white24,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.refresh, color: Colors.white, size: 22),
+                  child: const Icon(Icons.refresh, color: Colors.white, size: 22, ),
                 ),
               ),
             ),
@@ -418,31 +448,87 @@ class NotesByTagView extends StatelessWidget {
   }
 }
 
-class NotesDefaultView extends StatelessWidget {
+class NotesMasonryView extends StatelessWidget {
+  final List<Tag> allTags;
   final List<Note> pinnedNotes;
   final List<Note> sharedNotes;
   final List<Note> otherNotes;
-
-  const NotesDefaultView({super.key, required this.pinnedNotes, required this.sharedNotes, required this.otherNotes});
+  const NotesMasonryView({
+    super.key,
+    required this.allTags,
+    required this.pinnedNotes,
+    required this.sharedNotes,
+    required this.otherNotes,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      children: [
-        if (pinnedNotes.isNotEmpty) ...[
-          SectionHeader(title: 'Notes épinglées'),
-          ...pinnedNotes.map((note) => NoteCard(note: note)),
-        ],
-        if (sharedNotes.isNotEmpty) ...[
-          SectionHeader(title: 'Notes partagées'),
-          ...sharedNotes.map((note) => NoteCard(note: note)),
-        ],
-        if (pinnedNotes.isNotEmpty || sharedNotes.isNotEmpty) ...[
-          SectionHeader(title: 'Autres'),
-        ],
-        ...otherNotes.map((note) => NoteCard(note: note)),
-      ],
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width >= 900 ? 4 : width >= 600 ? 3 : 2;
+    final spacing = 12.0;
+
+    final List<_Section> sections = [
+      if (pinnedNotes.isNotEmpty) _Section('Notes épinglées', pinnedNotes),
+      if (sharedNotes.isNotEmpty) _Section('Notes partagées', sharedNotes),
+      _Section('Autres', otherNotes),
+    ];
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 8, bottom: 24),
+      itemCount: sections.length,
+      itemBuilder: (context, i) {
+        final s = sections[i];
+        if (s.notes.isEmpty) return const SizedBox.shrink();
+        return Column(
+          children: [
+            _SectionHeader(title: s.title),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: spacing),
+              child: MasonryGridView.count(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: spacing,
+                crossAxisSpacing: spacing,
+                itemCount: s.notes.length,
+                itemBuilder: (context, index) {
+                  final n = s.notes[index];
+                  return _NoteCreamCard(note: n, allTags: allTags);
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _Section {
+  final String title;
+  final List<Note> notes;
+  _Section(this.title, this.notes);
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  const _SectionHeader({required this.title});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      alignment: Alignment.center,
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          color: Color.fromARGB(255, 255, 255, 255),
+          letterSpacing: 0.2,
+        ),
+      ),
     );
   }
 }
@@ -458,6 +544,143 @@ class SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       alignment: Alignment.center,
       child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+    );
+  }
+}
+
+
+class _NoteCreamCard extends StatelessWidget {
+  final Note note;
+  final List<Tag> allTags;
+  const _NoteCreamCard({required this.note,required this.allTags});
+
+  
+  Tag? _findTag(int id) {
+    try {
+      return allTags.firstWhere((t) => t.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Hauteur variable façon masonry selon contenu
+    final title = (note.title.isEmpty) ? 'NOTE SANS TITRE' : note.title;
+    final content = note.content;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(255, 58, 50, 45),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.25), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color.fromARGB(255, 186, 186, 186).withOpacity(0.08),
+            blurRadius: 12,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Ligne titre + pin
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // TODO SVG emoji/icône
+              Icon(
+                note.icon,
+                size: 18,
+                color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.85),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color.fromARGB(255, 255, 255, 255),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  // callback onPin
+                },
+                child: Icon(
+                  note.pinned ? Icons.push_pin : Icons.push_pin_outlined,
+                  size: 18,
+                  color: const Color.fromARGB(255, 255, 255, 255).withOpacity(note.pinned ? 0.9 : 0.5),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          if (content.trim().isNotEmpty)
+            Text(
+              content,
+              style: TextStyle(
+                color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.85),
+                height: 1.25,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+              ),
+            )
+          else
+            Text(
+              '—',
+              style: TextStyle(
+                color: _hint.withOpacity(0.7),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+
+          const SizedBox(height: 12),
+
+          // Tags en bas si présents
+          if (note.tags.isNotEmpty)
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: note.tags.map((tagId) {
+                final t = _findTag(tagId);
+                final chipText = t?.name ?? 'TAG $tagId';
+                final chipColor = t?.color ?? const Color(0xFFFFF5E8);
+                final borderColor = _border.withOpacity(0.25);
+                final fg = useWhiteForeground(chipColor) ? Colors.white : _textDark.withOpacity(0.85);
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: chipColor,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Text(
+                    chipText,
+                    style: TextStyle(
+                      color: fg,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -531,8 +754,8 @@ class NewNoteButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton(
       backgroundColor: const Color(0xFFF28C28),
-      child: const Icon(Icons.add),
       onPressed: onPressed,
+      child: const Icon(Icons.add),
     );
   }
 }
@@ -630,24 +853,24 @@ class _CreateTagDialogState extends State<CreateTagDialog> {
                     onPressed: () {
                       widget.onCreate.call(_nameController.text, _color);
                     },
-                    child: Text('Créer mon dossier'.toUpperCase()),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFFF28C28),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     ),
+                    child: Text('Créer mon dossier'.toUpperCase()),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     onPressed: widget.onCancel,
-                    child: Text('Annuler'.toUpperCase()),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF7A1E00),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     ),
+                    child: Text('Annuler'.toUpperCase()),
                   ),
                 )
               ],
