@@ -386,9 +386,10 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF3A322D),
-        title: const Text('Paramètres'),
-      ),
+        backgroundColor: const Color(0xFF2A2420),
+        title: const Text('Paramètres',style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        iconTheme: const IconThemeData(color: Colors.white, ),
+        ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -400,28 +401,6 @@ class _SettingsPageState extends State<SettingsPage> {
             control: __ThemeDropdown(
               value: _theme,
               onChanged: (m) => setState(() => _theme = m),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Divider(color: _divider),
-
-          // Paramètres divers
-          const SizedBox(height: 16),
-          const __SettingsSectionTitle('Paramètres divers'),
-          const SizedBox(height: 16),
-          __SettingsRowLabelControl(
-            label: 'Couleur',
-            control: GestureDetector(
-              onTap: _toggleAccent,
-              child: Container(
-                width: 56,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: _accent,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFF3B3B3B), width: 1.5),
-                ),
-              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -589,7 +568,7 @@ class __ThemeDropdown extends StatelessWidget {
           value: value,
           icon: const Icon(Icons.keyboard_arrow_down),
           items: const [
-            DropdownMenuItem<ThemeMode>(value: ThemeMode.light, child: Text('Claire')),
+            DropdownMenuItem<ThemeMode>(value: ThemeMode.light, child: Text('Clair')),
             DropdownMenuItem<ThemeMode>(value: ThemeMode.dark, child: Text('Sombre')),
             DropdownMenuItem<ThemeMode>(value: ThemeMode.system, child: Text('Système')),
           ],
