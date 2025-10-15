@@ -14,10 +14,79 @@ const _border = Color(0xFF2F2F2F);
 const _textDark = Color(0xFF2A2A2A);
 const _hint = Color(0xFF7F7F7F);
 
+
+
+final ThemeData lightTheme = ThemeData(
+  brightness: Brightness.light,
+  scaffoldBackgroundColor: Colors.white,
+  primaryColor: const Color(0xFFF28C28),
+  appBarTheme: const AppBarTheme(backgroundColor: Color(0xFFF28C28)),
+);
+
+final ThemeData darkTheme = ThemeData(
+  brightness: Brightness.dark,
+  scaffoldBackgroundColor: const Color(0xFF2A2420),
+  primaryColor: const Color(0xFFF28C28),
+  appBarTheme: const AppBarTheme(backgroundColor: Color(0xFFF28C28)),
+);
+
+class CustomColors {
+  final Color noteCardColor;
+  final Color textColor;
+  final Color searchBarColor;
+  CustomColors({required this.noteCardColor,required this.textColor,required this.searchBarColor});
+}
+
+final customColorsLight = CustomColors(
+  noteCardColor: const Color(0xFFFFF5E8),
+  textColor: const Color(0xFF222222),
+  searchBarColor: const Color(0xFFFFF5E8),
+);
+
+
+final customColorsDark = CustomColors(
+  noteCardColor: const Color.fromARGB(255, 58, 50, 45),
+  textColor: const Color(0xFFEAE0D7),
+  searchBarColor: const Color(0xFFF28C28),
+);
+
+extension CustomThemeExtension on ThemeData {
+  CustomColors get customColors =>
+      brightness == Brightness.dark ? customColorsDark : customColorsLight;
+}
+
+class ThemeController extends ChangeNotifier {
+  bool _isDark = false;
+
+  ThemeData get theme => _isDark ? darkTheme : lightTheme;
+
+  bool get isDark => _isDark;
+
+  void toggleTheme(bool isDark) {
+    _isDark = isDark;
+    notifyListeners();
+  }
+}
+
+
+final themeController = ThemeController();
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const SilverNoteApp());
+  runApp(
+    AnimatedBuilder(
+      animation: themeController,
+      builder: (context, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: themeController.theme,
+          home: const SilverNoteApp(),
+        );
+      },
+    ),
+  );
 }
+
 
 class SilverNoteApp extends StatelessWidget {
   const SilverNoteApp({super.key});
@@ -27,39 +96,36 @@ class SilverNoteApp extends StatelessWidget {
     final topPadding = MediaQuery.of(context).padding.top - 7.5;
     return ClerkAuth(
       config: ClerkAuthConfig(publishableKey: clerkPublishableKey),
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          resizeToAvoidBottomInset: true,
-          body: LayoutBuilder(
-            builder: (context, _) {
-              final inset = MediaQuery.of(context).viewInsets.bottom;
-              final maxShift = 105.0;
-              final shift = inset.clamp(0.0, maxShift);
-              return Stack(
-                children: [
-                  Container(height: topPadding, color: const Color(0xFFF28C28)),
-                  Center(
-                    child: AnimatedPadding(
-                      padding: EdgeInsets.only(bottom: shift),
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOut,
-                      child: ClerkErrorListener(
-                        child: ClerkAuthBuilder(
-                          signedInBuilder: (context, auth) {
-                            return const HomePage();
-                          },
-                          signedOutBuilder: (context, authState) {
-                            return const ClerkAuthentication();
-                          },
-                        ),
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        body: LayoutBuilder(
+          builder: (context, _) {
+            final inset = MediaQuery.of(context).viewInsets.bottom;
+            final maxShift = 105.0;
+            final shift = inset.clamp(0.0, maxShift);
+            return Stack(
+              children: [
+                Container(height: topPadding, color: Theme.of(context).primaryColor),
+                Center(
+                  child: AnimatedPadding(
+                    padding: EdgeInsets.only(bottom: shift),
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    child: ClerkErrorListener(
+                      child: ClerkAuthBuilder(
+                        signedInBuilder: (context, auth) {
+                          return const HomePage();
+                        },
+                        signedOutBuilder: (context, authState) {
+                          return const ClerkAuthentication();
+                        },
                       ),
                     ),
                   ),
-                ],
-              );
-            },
-          ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -175,10 +241,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = const Color(0xFFF28C28);
-    final bgColor = const Color(0xFF2A2420);
-    //final surfaceColor = const Color(0xFF222222);
-    //final textColor = Colors.white;
+    final primaryColor = Theme.of(context).primaryColor;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -376,7 +440,6 @@ class _SettingsPageState extends State<SettingsPage> {
   ThemeMode _theme = ThemeMode.light;
   Color _accent = const Color(0xFFF28C28);
 
-  static const _bg = Color(0xFF2A2420);
   static const _sectionText = Colors.white;
   static const _labelText = Color(0xFFEAE0D7);
   static const _divider = Color(0x33FFFFFF);
@@ -384,11 +447,11 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: Theme.of(context).customColors.noteCardColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2A2420),
-        title: const Text('Paramètres',style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.white, ),
+        backgroundColor: Theme.of(context).customColors.noteCardColor,
+        title: Text('Paramètres',style: TextStyle(color: Theme.of(context).customColors.textColor, fontWeight: FontWeight.bold)),
+        iconTheme: IconThemeData(color: Theme.of(context).customColors.textColor, ),
         ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -399,14 +462,16 @@ class _SettingsPageState extends State<SettingsPage> {
           __SettingsRowLabelControl(
             label: 'Theme',
             control: __ThemeDropdown(
-              value: _theme,
-              onChanged: (m) => setState(() => _theme = m),
+              isDark: themeController.isDark,
+              onChanged: (val) {
+              themeController.toggleTheme(val);
+              setState(() {});
+              },
             ),
           ),
           const SizedBox(height: 16),
           const Divider(color: _divider),
 
-          // Paramètres base de données
           const SizedBox(height: 16),
           const __SettingsSectionTitle('Paramètres base de données'),
           const SizedBox(height: 16),
@@ -416,7 +481,7 @@ class _SettingsPageState extends State<SettingsPage> {
             child: FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFF28C28),
-                foregroundColor: Colors.white,
+                foregroundColor: Theme.of(context).customColors.textColor,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -431,10 +496,10 @@ class _SettingsPageState extends State<SettingsPage> {
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFFF28C28), width: 2),
-                foregroundColor: Colors.white,
+                foregroundColor: Theme.of(context).customColors.textColor,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                backgroundColor: Colors.transparent,
+                backgroundColor: Theme.of(context).customColors.noteCardColor,
               ),
               onPressed: _onUpload,
               child: const Text('Téléversez un fichier'),
@@ -447,7 +512,7 @@ class _SettingsPageState extends State<SettingsPage> {
             child: FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFE25524),
-                foregroundColor: Colors.white,
+                foregroundColor: Theme.of(context).customColors.textColor,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -504,7 +569,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
 class __SettingsSectionTitle extends StatelessWidget {
   final String text;
-  const __SettingsSectionTitle(this.text, {super.key});
+  const __SettingsSectionTitle(this.text);
   @override
   Widget build(BuildContext context) {
     return Text(
@@ -521,7 +586,7 @@ class __SettingsSectionTitle extends StatelessWidget {
 class __SettingsRowLabelControl extends StatelessWidget {
   final String label;
   final Widget control;
-  const __SettingsRowLabelControl({required this.label, required this.control, super.key});
+  const __SettingsRowLabelControl({required this.label, required this.control});
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -536,7 +601,7 @@ class __SettingsRowLabelControl extends StatelessWidget {
 class __SettingsRowActionRight extends StatelessWidget {
   final String label;
   final Widget child;
-  const __SettingsRowActionRight({required this.label, required this.child, super.key});
+  const __SettingsRowActionRight({required this.label, required this.child});
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -549,9 +614,10 @@ class __SettingsRowActionRight extends StatelessWidget {
 }
 
 class __ThemeDropdown extends StatelessWidget {
-  final ThemeMode value;
-  final ValueChanged<ThemeMode> onChanged;
-  const __ThemeDropdown({required this.value, required this.onChanged, super.key});
+  final bool isDark;  // booléen représentant ton thème personnalisé
+  final ValueChanged<bool> onChanged;
+
+  const __ThemeDropdown({required this.isDark, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -564,16 +630,14 @@ class __ThemeDropdown extends StatelessWidget {
         border: Border.all(color: const Color(0xFF3B3B3B), width: 1.5),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<ThemeMode>(
-          value: value,
-          icon: const Icon(Icons.keyboard_arrow_down),
+        child: DropdownButton<bool>(
+          value: isDark,
           items: const [
-            DropdownMenuItem<ThemeMode>(value: ThemeMode.light, child: Text('Clair')),
-            DropdownMenuItem<ThemeMode>(value: ThemeMode.dark, child: Text('Sombre')),
-            DropdownMenuItem<ThemeMode>(value: ThemeMode.system, child: Text('Système')),
+            DropdownMenuItem<bool>(value: false, child: Text('Clair')),
+            DropdownMenuItem<bool>(value: true, child: Text('Sombre')),
           ],
-          onChanged: (ThemeMode? m) {
-            if (m != null) onChanged(m);
+          onChanged: (val) {
+            if (val != null) onChanged(val);
           },
         ),
       ),
@@ -589,31 +653,31 @@ class SearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = Colors.white;
+    final textColor = Theme.of(context).customColors.textColor;
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF222222),
+        color: Theme.of(context).customColors.noteCardColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white24),
         boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 4)],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: TextField(
-        cursorColor: Colors.white,
+        cursorColor: Theme.of(context).customColors.textColor,
         style: TextStyle(color: textColor),
         controller: controller,
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: TextStyle(color: Colors.white54),
+          hintStyle: TextStyle(color: Theme.of(context).customColors.textColor),
           border: InputBorder.none,
           suffixIcon: controller.text.isEmpty
               ? GestureDetector(
                   onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
-                  child: Icon(Icons.search, color: Colors.white60),
+                  child: Icon(Icons.search, color: Theme.of(context).customColors.textColor),
                 )
               : GestureDetector(
                   onTap: () => controller.clear(),
-                  child: Icon(Icons.close, color: Colors.white60),
+                  child: Icon(Icons.close, color: Theme.of(context).customColors.textColor),
                 ),
         ),
       ),
@@ -786,14 +850,14 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: EdgeInsets.symmetric(vertical: 8),
       alignment: Alignment.center,
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: 18,
-          color: Color.fromARGB(255, 255, 255, 255),
+          color: Theme.of(context).customColors.textColor,
           letterSpacing: 0.2,
         ),
       ),
@@ -839,7 +903,7 @@ class _NoteCreamCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 58, 50, 45),
+        color: Theme.of(context).customColors.noteCardColor,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.25), width: 1.5),
         boxShadow: [
@@ -863,7 +927,7 @@ class _NoteCreamCard extends StatelessWidget {
               Icon(
                 note.icon,
                 size: 18,
-                color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.85),
+                color: Theme.of(context).customColors.textColor,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -871,8 +935,8 @@ class _NoteCreamCard extends StatelessWidget {
                   title.toUpperCase(),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color.fromARGB(255, 255, 255, 255),
+                  style: TextStyle(
+                    color: Theme.of(context).customColors.textColor,
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
                     letterSpacing: 0.2,
@@ -887,7 +951,7 @@ class _NoteCreamCard extends StatelessWidget {
                 child: Icon(
                   note.pinned ? Icons.push_pin : Icons.push_pin_outlined,
                   size: 18,
-                  color: const Color.fromARGB(255, 255, 255, 255).withOpacity(note.pinned ? 0.9 : 0.5),
+                  color: Theme.of(context).customColors.textColor,
                 ),
               ),
             ],
@@ -899,7 +963,7 @@ class _NoteCreamCard extends StatelessWidget {
             Text(
               content,
               style: TextStyle(
-                color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.85),
+                color: Theme.of(context).customColors.textColor,
                 height: 1.25,
                 fontSize: 13.5,
                 fontWeight: FontWeight.w500,
