@@ -74,15 +74,18 @@ final themeController = ThemeController();
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
-    AnimatedBuilder(
-      animation: themeController,
-      builder: (context, child) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: themeController.theme,
-          home: const SilverNoteApp(),
-        );
-      },
+    ClerkAuth(
+      config: ClerkAuthConfig(publishableKey: clerkPublishableKey),
+      child: AnimatedBuilder(
+        animation: themeController,
+        builder: (context, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: themeController.theme,
+            home: const SilverNoteApp(),
+          );
+        },
+      ),
     ),
   );
 }
@@ -94,39 +97,37 @@ class SilverNoteApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top - 7.5;
-    return ClerkAuth(
-      config: ClerkAuthConfig(publishableKey: clerkPublishableKey),
-      child: Scaffold(
-        resizeToAvoidBottomInset: true,
-        body: LayoutBuilder(
-          builder: (context, _) {
-            final inset = MediaQuery.of(context).viewInsets.bottom;
-            final maxShift = 105.0;
-            final shift = inset.clamp(0.0, maxShift);
-            return Stack(
-              children: [
-                Container(height: topPadding, color: Theme.of(context).primaryColor),
-                Center(
-                  child: AnimatedPadding(
-                    padding: EdgeInsets.only(bottom: shift),
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOut,
-                    child: ClerkErrorListener(
-                      child: ClerkAuthBuilder(
-                        signedInBuilder: (context, auth) {
-                          return const HomePage();
-                        },
-                        signedOutBuilder: (context, authState) {
-                          return const ClerkAuthentication();
-                        },
-                      ),
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      body: LayoutBuilder(
+        builder: (context, _) {
+          final inset = MediaQuery.of(context).viewInsets.bottom;
+          final maxShift = 105.0;
+          final shift = inset.clamp(0.0, maxShift);
+
+          return Stack(
+            children: [
+              Container(
+                height: topPadding,
+                color: Theme.of(context).primaryColor,
+              ),
+              Center(
+                child: AnimatedPadding(
+                  padding: EdgeInsets.only(bottom: shift),
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  child: ClerkErrorListener(
+                    child: ClerkAuthBuilder(
+                      signedInBuilder: (context, auth) => const HomePage(),
+                      signedOutBuilder: (context, authState) =>
+                          const ClerkAuthentication(),
                     ),
                   ),
                 ),
-              ],
-            );
-          },
-        ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -437,7 +438,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  ThemeMode _theme = ThemeMode.light;
+  final ThemeMode _theme = ThemeMode.light;
   Color _accent = const Color(0xFFF28C28);
 
   static const _sectionText = Colors.white;
