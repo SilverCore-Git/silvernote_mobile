@@ -8,8 +8,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 const appUrl = 'https://test-clerk.dev.silvernote.fr/';
 const String clerkPublishableKey = 'pk_test_aW52aXRpbmctZmluY2gtNTIuY2xlcmsuYWNjb3VudHMuZGV2JA';
 
-//const _cream = Color(0xFFFEF3E7);
-//const _creamSurface = Color(0xFFFFF1E6);
 const _border = Color(0xFF2F2F2F);
 const _textDark = Color(0xFF2A2A2A);
 const _hint = Color(0xFF7F7F7F);
@@ -33,21 +31,18 @@ final ThemeData darkTheme = ThemeData(
 class CustomColors {
   final Color noteCardColor;
   final Color textColor;
-  final Color searchBarColor;
-  CustomColors({required this.noteCardColor,required this.textColor,required this.searchBarColor});
+  CustomColors({required this.noteCardColor,required this.textColor});
 }
 
 final customColorsLight = CustomColors(
   noteCardColor: const Color(0xFFFFF5E8),
   textColor: const Color(0xFF222222),
-  searchBarColor: const Color(0xFFFFF5E8),
 );
 
 
 final customColorsDark = CustomColors(
-  noteCardColor: const Color.fromARGB(255, 58, 50, 45),
+  noteCardColor: const Color(0xFF3A322D),
   textColor: const Color(0xFFEAE0D7),
-  searchBarColor: const Color(0xFFF28C28),
 );
 
 extension CustomThemeExtension on ThemeData {
@@ -438,11 +433,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  final ThemeMode _theme = ThemeMode.light;
-  Color _accent = const Color(0xFFF28C28);
 
-  static const _sectionText = Colors.white;
-  static const _labelText = Color(0xFFEAE0D7);
   static const _divider = Color(0x33FFFFFF);
 
   @override
@@ -526,12 +517,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _toggleAccent() {
-    setState(() {
-      _accent = _accent == const Color(0xFFF28C28) ? const Color(0xFF3B82F6) : const Color(0xFFF28C28);
-    });
-  }
-
   void _onDownload() {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Téléchargement...')));
   }
@@ -575,8 +560,8 @@ class __SettingsSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
-        color: Colors.white,
+      style: TextStyle(
+        color: Theme.of(context).customColors.textColor,
         fontWeight: FontWeight.w800,
         fontSize: 22,
       ),
@@ -592,7 +577,7 @@ class __SettingsRowLabelControl extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: const TextStyle(color: Color(0xFFEAE0D7), fontSize: 16))),
+        Expanded(child: Text(label, style: TextStyle(color: Theme.of(context).customColors.textColor, fontSize: 16))),
         control,
       ],
     );
@@ -607,7 +592,7 @@ class __SettingsRowActionRight extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: const TextStyle(color: Color(0xFFEAE0D7), fontSize: 16))),
+        Expanded(child: Text(label, style: TextStyle(color: Theme.of(context).customColors.textColor, fontSize: 16))),
         child,
       ],
     );
@@ -626,9 +611,9 @@ class __ThemeDropdown extends StatelessWidget {
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF5E8),
+        color: Theme.of(context).customColors.noteCardColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF3B3B3B), width: 1.5),
+        border: Border.all(color: Theme.of(context).customColors.textColor, width: 1.5),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<bool>(
