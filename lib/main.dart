@@ -377,7 +377,8 @@ extension NoteApiMapper on Note {
 
 Future<List<Note>> appelApi(BuildContext context) async {
   final auth = ClerkAuth.of(context);
-  final userId = "user_329XqTGGOrdx5pbX3Q9IPkmyhs2";
+  final user = auth.user;
+  final userId = user?.id;
   debugPrint('appelApi: userId=$userId');
 
   if (userId == null || userId.isEmpty) {
