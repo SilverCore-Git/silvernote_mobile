@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:clerk_flutter/clerk_flutter.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 const appUrl = 'https://test-clerk.dev.silvernote.fr/';
-const String clerkPublishableKey = 'pk_test_aW52aXRpbmctZmluY2gtNTIuY2xlcmsuYWNjb3VudHMuZGV2JA';
+const String clerkPublishableKey = String.fromEnvironment('PUBLISHABLE_KEY', defaultValue: '');
 
 const _border = Color(0xFF2F2F2F);
 const _textDark = Color(0xFF2A2A2A);
 const _hint = Color(0xFF7F7F7F);
-
-
 
 final ThemeData lightTheme = ThemeData(
   brightness: Brightness.light,
@@ -31,14 +31,13 @@ final ThemeData darkTheme = ThemeData(
 class CustomColors {
   final Color noteCardColor;
   final Color textColor;
-  CustomColors({required this.noteCardColor,required this.textColor});
+  CustomColors({required this.noteCardColor, required this.textColor});
 }
 
 final customColorsLight = CustomColors(
   noteCardColor: const Color(0xFFFFF5E8),
   textColor: const Color(0xFF222222),
 );
-
 
 final customColorsDark = CustomColors(
   noteCardColor: const Color(0xFF3A322D),
@@ -63,7 +62,6 @@ class ThemeController extends ChangeNotifier {
   }
 }
 
-
 final themeController = ThemeController();
 
 void main() {
@@ -84,7 +82,6 @@ void main() {
     ),
   );
 }
-
 
 class SilverNoteApp extends StatelessWidget {
   const SilverNoteApp({super.key});
@@ -113,7 +110,11 @@ class SilverNoteApp extends StatelessWidget {
                   curve: Curves.easeOut,
                   child: ClerkErrorListener(
                     child: ClerkAuthBuilder(
-                      signedInBuilder: (context, auth) => const HomePage(),
+                      signedInBuilder: (context, auth) {
+                        final user = auth.user;
+                        final userId = user?.id;
+                        return HomePage(userId: userId);
+                      },
                       signedOutBuilder: (context, authState) =>
                           const ClerkAuthentication(),
                     ),
@@ -129,22 +130,31 @@ class SilverNoteApp extends StatelessWidget {
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final String? userId;
+  const HomePage({super.key, this.userId});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  double _refreshTurns = 0.0;
   /// TODO : Données simulées
   List<Tag> allTags = [
     Tag(id: 1, name: 'Important', color: Colors.orange, active: false),
     Tag(id: 2, name: 'Travail', color: Colors.blue, active: true),
   ];
   List<Note> listNotes = [];
-  late final List<Note> allNotesSource;
+  late List<Note> allNotesSource;
   List<Note> sharedNotes = [
-    Note(id: 3, title: 'Note partagée', content: 'Contenu partagé', tags: [], pinned: false, icon: Icons.share),
+    Note(
+      id: 3,
+      title: 'Note partagée',
+      content: 'Contenu partagé',
+      tags: [],
+      pinned: false,
+      icon: Icons.share,
+    ),
   ];
 
   bool ifOpenCreateTag = false;
@@ -159,20 +169,21 @@ class _HomePageState extends State<HomePage> {
 
   TextEditingController searchController = TextEditingController();
 
-   @override
+  @override
   void initState() {
     super.initState();
-    allNotesSource = [
-      Note(id: 1, title: 'Note 1', content: 'Contenu 1', tags: [1, 2], pinned: true, icon: Icons.note),
-      Note(id: 3, title: 'Note 3', content: 'Contenu 3', tags: [1], pinned: true, icon: Icons.note),
-      Note(id: 4, title: 'Note 4', content: 'Contenu 4', tags: [1], pinned: true, icon: Icons.note),
-      Note(id: 2, title: 'Note 2', content: 'Contenu 2', tags: [], pinned: false, icon: Icons.note_alt),
-      Note(id: 12, title: 'Note 12', content: 'Contenu 12', tags: [1], pinned: true, icon: Icons.note_alt),
-      Note(id: 22, title: 'Note 22', content: 'Contenu 22', tags: [2], pinned: true, icon: Icons.note_alt),
-      Note(id: 32, title: 'Note 32', content: 'Contenu 32', tags: [1], pinned: true, icon: Icons.note_alt),
-      Note(id: 42, title: 'Note 42', content: 'Contenu 42', tags: [2], pinned: true, icon: Icons.note_alt),
-    ];
-    listNotes = List<Note>.from(allNotesSource);
+    // Diffère pour avoir un BuildContext correctement monté sous ClerkAuth
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final notes = await appelApi(context);
+      if (!mounted) return;
+      setState(() {
+        allNotesSource = notes;
+        listNotes = List<Note>.from(notes);
+        // sharedNotes si besoin: filtre sur une règle ou laisse vide selon ton API
+        sharedNotes = [];
+      });
+    });
   }
 
   @override
@@ -181,15 +192,17 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void reloadList() {
+Future<void> reloadList() async {
     setState(() {
-      isRotating = true;
+      _refreshTurns += 1.0; // déclenche exactement 1 tour
+      isRotating = true;     // si tu veux aussi un état loading
     });
-    Future.delayed(const Duration(milliseconds: 300), () {
-      setState(() {
-        isRotating = false;
-        // TODO : Reload Data here
-      });
+    final notes = await appelApi(context);
+    if (!mounted) return;
+    setState(() {
+      allNotesSource = notes;
+      listNotes = List<Note>.from(notes);
+      isRotating = false;
     });
   }
 
@@ -197,15 +210,18 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       final tag = allTags.firstWhere((t) => t.id == tagId);
       tag.active = !tag.active;
-      final activeIds = allTags.where((t) => t.active).map((t) => t.id).toList();
+      final activeIds = allTags
+          .where((t) => t.active)
+          .map((t) => t.id)
+          .toList();
       if (activeIds.isEmpty) {
         listNotes = List<Note>.from(allNotesSource);
         notesViewMode = 'default'; // optionnel
-      return;
+        return;
       }
       listNotes = allNotesSource.where((n) {
-      return n.tags.any((tid) => activeIds.contains(tid));
-          }).toList();
+        return n.tags.any((tid) => activeIds.contains(tid));
+      }).toList();
       notesViewMode = 'default';
     });
   }
@@ -230,7 +246,14 @@ class _HomePageState extends State<HomePage> {
 
   void createTag() {
     setState(() {
-      allTags.add(Tag(id: allTags.length + 1, name: tagName, color: tagColor, active: false));
+      allTags.add(
+        Tag(
+          id: allTags.length + 1,
+          name: tagName,
+          color: tagColor,
+          active: false,
+        ),
+      );
       closeCreateTag();
     });
   }
@@ -245,9 +268,10 @@ class _HomePageState extends State<HomePage> {
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(60),
         child: NavBar(
-          isRotating: isRotating,
-          primaryColor: primaryColor,
+         isRotating: isRotating,
+          primaryColor: Theme.of(context).primaryColor,
           onReload: reloadList,
+          refreshTurns: _refreshTurns,
         ),
       ),
       body: Stack(
@@ -276,18 +300,19 @@ class _HomePageState extends State<HomePage> {
                     content: 'You can create a new note with +',
                   ),
                 if (ifDangerCard)
-                  DangerCard(
-                    title: 'Attention',
-                    content: 'Important alert',
-                  ),
+                  DangerCard(title: 'Attention', content: 'Important alert'),
                 Expanded(
                   child: notesViewMode == 'tag'
                       ? NotesByTagView(allTags: allTags, listNotes: listNotes)
                       : NotesMasonryView(
                           allTags: allTags,
-                          pinnedNotes: listNotes.where((n) => n.pinned).toList(),
+                          pinnedNotes: listNotes
+                              .where((n) => n.pinned)
+                              .toList(),
                           sharedNotes: sharedNotes,
-                          otherNotes: listNotes.where((n) => !n.pinned).toList(),
+                          otherNotes: listNotes
+                              .where((n) => !n.pinned)
+                              .toList(),
                         ),
                 ),
               ],
@@ -316,10 +341,104 @@ class _HomePageState extends State<HomePage> {
             ),
         ],
       ),
-      floatingActionButton: NewNoteButton(
-        onPressed: createNewNote,
-      ),
+      floatingActionButton: NewNoteButton(onPressed: createNewNote),
     );
+  }
+}
+
+extension NoteApiMapper on Note {
+  static IconData _pickIcon(String? icon, String title, String content) {
+    if (icon != null && icon.isNotEmpty) return Icons.note;
+    if (title.toLowerCase().contains('todo')) return Icons.checklist;
+    return Icons.note_alt;
+  }
+
+  static Note fromApi(Map<String, dynamic> j) {
+    final title = (j['title'] ?? '').toString();
+    final content = (j['content'] ?? '').toString();
+    final pinned = (j['pinned'] ?? false) == true;
+    final tags = (j['tags'] is List)
+        ? (j['tags'] as List)
+              .map((e) => e is int ? e : int.tryParse('$e') ?? 0)
+              .where((e) => e > 0)
+              .toList()
+        : <int>[];
+
+    return Note(
+      id: j['id'] is int ? j['id'] as int : int.tryParse('${j['id']}') ?? 0,
+      title: title.isEmpty ? 'Note sans titre' : title,
+      content: content,
+      tags: tags,
+      pinned: pinned,
+      icon: _pickIcon(j['icon'] as String?, title, content),
+    );
+  }
+}
+
+Future<List<Note>> appelApi(BuildContext context) async {
+  final auth = ClerkAuth.of(context);
+  final userId = "user_329XqTGGOrdx5pbX3Q9IPkmyhs2";
+  debugPrint('appelApi: userId=$userId');
+
+  if (userId == null || userId.isEmpty) {
+    debugPrint('appelApi: userId manquant');
+    return <Note>[];
+  }
+
+  final uri = Uri.parse('https://api.silvernote.fr/api/db/get/user/notes?user_id=$userId');
+  debugPrint('appelApi: GET $uri'); // log 2
+
+  try {
+
+      const String coarseToken = String.fromEnvironment('COARSE_TOKEN', defaultValue: '');
+
+    final resp = await http.get(
+      uri,
+      headers: {
+        'Authorization': '$coarseToken',
+      },
+    );
+
+    debugPrint('appelApi: status=${resp.statusCode} len=${resp.body.length}'); // log 3
+
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      debugPrint('status=${resp.statusCode}');
+      debugPrint('body[0..300]=${resp.body.substring(0, resp.body.length.clamp(0, 300))}');
+      return <Note>[];
+    }
+
+    final dynamic decoded = json.decode(resp.body);
+    if (decoded is! Map) {
+      debugPrint('appelApi: JSON racine non-objet: ${decoded.runtimeType}');
+      return <Note>[];
+    }
+    
+    final map = decoded;
+    final ok = map['success'] == true;
+    debugPrint('appelApi: success=$ok');
+
+    final rawNotes = map['notes'];
+    if (rawNotes is! List) {
+      debugPrint('appelApi: notes non-liste: ${rawNotes.runtimeType}');
+      return <Note>[];
+    }
+
+    final notes = rawNotes
+        .map((e) {
+          if (e is Map) {
+            return NoteApiMapper.fromApi(e.cast<String, dynamic>());
+          } else {
+            return null;
+          }
+        })
+        .whereType<Note>()
+        .toList();
+
+    debugPrint('appelApi: parsed notes=${notes.length}');
+    return notes;
+  } catch (e) {
+    debugPrint('appelApi: error $e');
+    return <Note>[];
   }
 }
 
@@ -328,15 +447,17 @@ class NavBar extends StatelessWidget {
   final bool isRotating;
   final Color primaryColor;
   final VoidCallback onReload;
+  final double refreshTurns;
 
   const NavBar({
     super.key,
     required this.isRotating,
     required this.primaryColor,
     required this.onReload,
+    required this.refreshTurns,
   });
 
-@override
+  @override
   Widget build(BuildContext context) {
     return Container(
       color: primaryColor,
@@ -371,8 +492,9 @@ class NavBar extends StatelessWidget {
               children: [
                 GestureDetector(
                   onTap: onReload,
-                  child: RotationTransition(
-                    turns: AlwaysStoppedAnimation(isRotating ? 1 : 0),
+                  child: AnimatedRotation(
+                    duration: const Duration(milliseconds: 400), // vitesse du tour
+                    turns: refreshTurns,
                     child: Container(
                       width: 36,
                       height: 36,
@@ -381,11 +503,7 @@ class NavBar extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                       alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.refresh,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      child: const Icon(Icons.refresh, color: Colors.white, size: 20),
                     ),
                   ),
                 ),
@@ -433,7 +551,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-
   static const _divider = Color(0x33FFFFFF);
 
   @override
@@ -442,9 +559,17 @@ class _SettingsPageState extends State<SettingsPage> {
       backgroundColor: Theme.of(context).customColors.noteCardColor,
       appBar: AppBar(
         backgroundColor: Theme.of(context).customColors.noteCardColor,
-        title: Text('Paramètres',style: TextStyle(color: Theme.of(context).customColors.textColor, fontWeight: FontWeight.bold)),
-        iconTheme: IconThemeData(color: Theme.of(context).customColors.textColor, ),
+        title: Text(
+          'Paramètres',
+          style: TextStyle(
+            color: Theme.of(context).customColors.textColor,
+            fontWeight: FontWeight.bold,
+          ),
         ),
+        iconTheme: IconThemeData(
+          color: Theme.of(context).customColors.textColor,
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -456,8 +581,8 @@ class _SettingsPageState extends State<SettingsPage> {
             control: __ThemeDropdown(
               isDark: themeController.isDark,
               onChanged: (val) {
-              themeController.toggleTheme(val);
-              setState(() {});
+                themeController.toggleTheme(val);
+                setState(() {});
               },
             ),
           ),
@@ -474,8 +599,13 @@ class _SettingsPageState extends State<SettingsPage> {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFF28C28),
                 foregroundColor: Theme.of(context).customColors.textColor,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: _onDownload,
               child: const Text('Télécharger'),
@@ -489,8 +619,13 @@ class _SettingsPageState extends State<SettingsPage> {
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFFF28C28), width: 2),
                 foregroundColor: Theme.of(context).customColors.textColor,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 backgroundColor: Theme.of(context).customColors.noteCardColor,
               ),
               onPressed: _onUpload,
@@ -505,8 +640,13 @@ class _SettingsPageState extends State<SettingsPage> {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFE25524),
                 foregroundColor: Theme.of(context).customColors.textColor,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: _onReset,
               child: const Text('Réinitialiser'),
@@ -518,11 +658,15 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _onDownload() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Téléchargement...')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Téléchargement...')));
   }
 
   void _onUpload() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Téléversement...')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Téléversement...')));
   }
 
   void _onReset() async {
@@ -530,13 +674,19 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF3A322D),
-        title: const Text('Réinitialiser les données', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Réinitialiser les données',
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           'Cette action supprimera toutes les données locales.',
           style: TextStyle(color: Color(0xFFEAE0D7)),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Color(0xFFE25524)),
             onPressed: () => Navigator.pop(context, true),
@@ -546,7 +696,9 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
     if (ok == true) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Données réinitialisées.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Données réinitialisées.')));
     }
   }
 }
@@ -577,7 +729,15 @@ class __SettingsRowLabelControl extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: TextStyle(color: Theme.of(context).customColors.textColor, fontSize: 16))),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).customColors.textColor,
+              fontSize: 16,
+            ),
+          ),
+        ),
         control,
       ],
     );
@@ -592,7 +752,15 @@ class __SettingsRowActionRight extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: TextStyle(color: Theme.of(context).customColors.textColor, fontSize: 16))),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).customColors.textColor,
+              fontSize: 16,
+            ),
+          ),
+        ),
         child,
       ],
     );
@@ -600,7 +768,7 @@ class __SettingsRowActionRight extends StatelessWidget {
 }
 
 class __ThemeDropdown extends StatelessWidget {
-  final bool isDark;  // booléen représentant ton thème personnalisé
+  final bool isDark; // booléen représentant ton thème personnalisé
   final ValueChanged<bool> onChanged;
 
   const __ThemeDropdown({required this.isDark, required this.onChanged});
@@ -613,7 +781,10 @@ class __ThemeDropdown extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).customColors.noteCardColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Theme.of(context).customColors.textColor, width: 1.5),
+        border: Border.all(
+          color: Theme.of(context).customColors.textColor,
+          width: 1.5,
+        ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<bool>(
@@ -659,11 +830,17 @@ class SearchBar extends StatelessWidget {
           suffixIcon: controller.text.isEmpty
               ? GestureDetector(
                   onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
-                  child: Icon(Icons.search, color: Theme.of(context).customColors.textColor),
+                  child: Icon(
+                    Icons.search,
+                    color: Theme.of(context).customColors.textColor,
+                  ),
                 )
               : GestureDetector(
                   onTap: () => controller.clear(),
-                  child: Icon(Icons.close, color: Theme.of(context).customColors.textColor),
+                  child: Icon(
+                    Icons.close,
+                    color: Theme.of(context).customColors.textColor,
+                  ),
                 ),
         ),
       ),
@@ -677,7 +854,12 @@ class TagList extends StatelessWidget {
   final void Function(int) onTagTap;
   final VoidCallback onAddTag;
 
-  const TagList({super.key, required this.tags, required this.onTagTap, required this.onAddTag});
+  const TagList({
+    super.key,
+    required this.tags,
+    required this.onTagTap,
+    required this.onAddTag,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -692,14 +874,29 @@ class TagList extends StatelessWidget {
               return GestureDetector(
                 onTap: () => onTagTap(tag.id),
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 6,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: tag.color,
                     borderRadius: BorderRadius.circular(40),
-                    border: tag.active ? Border.all(color: Colors.black, width: 2) : null,
+                    border: tag.active
+                        ? Border.all(color: Colors.black, width: 2)
+                        : null,
                   ),
-                  child: Text(tag.name, style: TextStyle(color: useWhiteForeground(tag.color) ? Colors.white : Colors.black)),
+                  child: Text(
+                    tag.name,
+                    style: TextStyle(
+                      color: useWhiteForeground(tag.color)
+                          ? Colors.white
+                          : Colors.black,
+                    ),
+                  ),
                 ),
               );
             },
@@ -717,7 +914,12 @@ class TagList extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFF28C28)),
             ),
-            child: const Center(child: Text('+', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
+            child: const Center(
+              child: Text(
+                '+',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ),
           ),
         ),
       ],
@@ -731,31 +933,49 @@ class NotesByTagView extends StatelessWidget {
   final List<Tag> allTags;
   final List<Note> listNotes;
 
-  const NotesByTagView({super.key, required this.allTags, required this.listNotes});
+  const NotesByTagView({
+    super.key,
+    required this.allTags,
+    required this.listNotes,
+  });
 
   @override
   Widget build(BuildContext context) {
     List<Widget> widgets = [];
     for (final tag in allTags) {
-      final notesForTag = listNotes.where((n) => n.tags.contains(tag.id)).toList();
+      final notesForTag = listNotes
+          .where((n) => n.tags.contains(tag.id))
+          .toList();
       if (notesForTag.isEmpty) continue;
 
-      widgets.add(Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: tag.color,
-              borderRadius: BorderRadius.circular(8),
+      widgets.add(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: tag.color,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                tag.name,
+                style: TextStyle(
+                  color: useWhiteForeground(tag.color)
+                      ? Colors.white
+                      : Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
-            child: Text(tag.name, style: TextStyle(color: useWhiteForeground(tag.color) ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
-          ),
-          Column(
-            children: notesForTag.map((note) => NoteCard(note: note)).toList(),
-          ),
-        ],
-      ));
+            Column(
+              children: notesForTag
+                  .map((note) => NoteCard(note: note))
+                  .toList(),
+            ),
+          ],
+        ),
+      );
       widgets.add(const SizedBox(height: 12));
     }
 
@@ -782,7 +1002,11 @@ class NotesMasonryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final crossAxisCount = width >= 900 ? 4 : width >= 600 ? 3 : 2;
+    final crossAxisCount = width >= 900
+        ? 4
+        : width >= 600
+        ? 3
+        : 2;
     final spacing = 12.0;
 
     final List<_Section> sections = [
@@ -861,18 +1085,19 @@ class SectionHeader extends StatelessWidget {
       color: Colors.transparent,
       padding: const EdgeInsets.symmetric(vertical: 8),
       alignment: Alignment.center,
-      child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+      child: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+      ),
     );
   }
 }
 
-
 class _NoteCreamCard extends StatelessWidget {
   final Note note;
   final List<Tag> allTags;
-  const _NoteCreamCard({required this.note,required this.allTags});
+  const _NoteCreamCard({required this.note, required this.allTags});
 
-  
   Tag? _findTag(int id) {
     try {
       return allTags.firstWhere((t) => t.id == id);
@@ -891,7 +1116,10 @@ class _NoteCreamCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).customColors.noteCardColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.25), width: 1.5),
+        border: Border.all(
+          color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.25),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: const Color.fromARGB(255, 186, 186, 186).withOpacity(0.08),
@@ -976,10 +1204,15 @@ class _NoteCreamCard extends StatelessWidget {
                 final chipText = t?.name ?? 'TAG $tagId';
                 final chipColor = t?.color ?? const Color(0xFFFFF5E8);
                 final borderColor = _border.withOpacity(0.25);
-                final fg = useWhiteForeground(chipColor) ? Colors.white : _textDark.withOpacity(0.85);
+                final fg = useWhiteForeground(chipColor)
+                    ? Colors.white
+                    : _textDark.withOpacity(0.85);
 
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: chipColor,
                     borderRadius: BorderRadius.circular(10),
@@ -1020,10 +1253,16 @@ class NoteCard extends StatelessWidget {
       color: bgColor,
       child: ListTile(
         leading: Icon(note.icon, color: Colors.orangeAccent),
-        title: Text(note.title, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+        title: Text(
+          note.title,
+          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+        ),
         subtitle: Text(note.content, style: TextStyle(color: textColor)),
         trailing: IconButton(
-          icon: Icon(note.pinned ? Icons.push_pin : Icons.push_pin_outlined, color: Colors.orangeAccent),
+          icon: Icon(
+            note.pinned ? Icons.push_pin : Icons.push_pin_outlined,
+            color: Colors.orangeAccent,
+          ),
           onPressed: onPin,
         ),
         onTap: onClick,
@@ -1053,7 +1292,14 @@ class DangerCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
+          ),
           const SizedBox(height: 8),
           Text(content, style: const TextStyle(color: Colors.white)),
         ],
@@ -1157,7 +1403,10 @@ class _CreateTagDialogState extends State<CreateTagDialog> {
                     decoration: BoxDecoration(
                       color: _color,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFF28C28), width: 2),
+                      border: Border.all(
+                        color: const Color(0xFFF28C28),
+                        width: 2,
+                      ),
                     ),
                   ),
                 ),
@@ -1174,7 +1423,9 @@ class _CreateTagDialogState extends State<CreateTagDialog> {
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFFF28C28),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
                     child: Text('Créer mon dossier'.toUpperCase()),
                   ),
@@ -1186,13 +1437,15 @@ class _CreateTagDialogState extends State<CreateTagDialog> {
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF7A1E00),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
                     child: Text('Annuler'.toUpperCase()),
                   ),
-                )
+                ),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -1207,10 +1460,11 @@ class _CreateTagDialogState extends State<CreateTagDialog> {
 }
 
 bool useWhiteForeground(Color backgroundColor, {double bias = 0.0}) {
-  int v = sqrt(pow(backgroundColor.red, 2) * 0.299 +
-          pow(backgroundColor.green, 2) * 0.587 +
-          pow(backgroundColor.blue, 2) * 0.114)
-      .round();
+  int v = sqrt(
+    pow(backgroundColor.red, 2) * 0.299 +
+        pow(backgroundColor.green, 2) * 0.587 +
+        pow(backgroundColor.blue, 2) * 0.114,
+  ).round();
   return v < 130 + bias;
 }
 
@@ -1220,7 +1474,12 @@ class Tag {
   final Color color;
   bool active;
 
-  Tag({required this.id, required this.name, required this.color, this.active = false});
+  Tag({
+    required this.id,
+    required this.name,
+    required this.color,
+    this.active = false,
+  });
 }
 
 class Note {

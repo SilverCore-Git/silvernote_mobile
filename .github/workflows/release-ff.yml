@@ -33,7 +33,10 @@ jobs:
         run: flutter pub get
 
       - name: Build debug APK
-        run: flutter build apk --debug
+        env:
+          COARSE_TOKEN: ${{ secrets.COARSE_TOKEN }}
+          PUBLISHABLE_KEY: ${{ secrets.PUBLISHABLE_KEY }}
+        run: flutter build apk --debug --dart-define=COARSE_TOKEN=$COARSE_TOKEN --dart-define=PUBLISHABLE_KEY=$PUBLISHABLE_KEY
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

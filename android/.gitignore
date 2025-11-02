@@ -12,3 +12,12 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+*.env
+.env
+config.json
+lib/env/env.g.dart
+
+build/
+*.apk
+*.aab
