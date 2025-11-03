@@ -52,13 +52,9 @@ jobs:
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Rename APK with tag name
-        run: |
-          APK_NAME="silvernote-${{ steps.get_latest_tag.outputs.TAG }}-android-debug.apk"
-          mv build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/$APK_NAME
-        env:
-          TAG: ${{ steps.get_latest_tag.outputs.TAG }}
-
+      - name: Rename APK with version
+        run: mv build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/silvernote-0.0.8-android-debug.apk
+          
 
       - name: Get latest tag
         id: get_latest_tag
@@ -84,8 +80,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.get_latest_tag.outputs.TAG }}
-          name: Silvernote (${ { steps.get_latest_tag.outputs.TAG } })
+          tag_name: v${{ steps.bump_version.outputs.NEW_VERSION }}
+          name: Silvernote (v${{ steps.bump_version.outputs.NEW_VERSION }})
           body: |
             Nouvelle version de Silvernote.
         env:
@@ -94,7 +90,7 @@ jobs:
       - name: Upload build to Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.get_latest_tag.outputs.TAG }}
-          files: build/app/outputs/flutter-apk/silvernote-${{ steps.get_latest_tag.outputs.TAG }}-android-debug.apk
+          tag_name: v${{ steps.bump_version.outputs.NEW_VERSION }}
+          files: build/app/outputs/flutter-apk/silvernote-0.0.8-android-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
