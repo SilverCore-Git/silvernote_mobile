@@ -84,8 +84,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.bump_version.outputs.NEW_VERSION }}
-          name: Silvernote (v${{ steps.bump_version.outputs.NEW_VERSION }})
+          tag_name: ${{ steps.get_latest_tag.outputs.TAG }}
+          name: Silvernote (${ { steps.get_latest_tag.outputs.TAG } })
           body: |
             Nouvelle version de Silvernote.
         env:
