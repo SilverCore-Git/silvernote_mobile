@@ -53,7 +53,7 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Rename APK with version
-        run: mv build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/silvernote-0.0.8-android-debug.apk
+        run: mv build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/silvernote-0.0.10-android-debug.apk
           
 
       - name: Get latest tag
@@ -91,6 +91,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.bump_version.outputs.NEW_VERSION }}
-          files: build/app/outputs/flutter-apk/silvernote-0.0.8-android-debug.apk
+          files: build/app/outputs/flutter-apk/silvernote-0.0.10-android-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
