@@ -6,6 +6,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:html/parser.dart' as html_parser;
 
 const appUrl = 'https://test-clerk.dev.silvernote.fr/';
 const String clerkPublishableKey = String.fromEnvironment('PUBLISHABLE_KEY', defaultValue: '');
@@ -260,7 +261,6 @@ Future<void> reloadList() async {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).primaryColor;
     final bgColor = Theme.of(context).scaffoldBackgroundColor;
 
     return Scaffold(
@@ -1107,11 +1107,25 @@ class _NoteCreamCard extends StatelessWidget {
     }
   }
 
+  String stripHtmlTags(String htmlContent) {
+  final document = html_parser.parse(htmlContent);
+  return document.body?.text ?? '';
+}
+
+  String _truncateContent(String text) {
+    const maxLength = 100;
+    if (text.length > maxLength) {
+      return '${text.substring(0, maxLength)}...';
+    } else {
+      return text;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Hauteur variable façon masonry selon contenu
     final title = (note.title.isEmpty) ? 'NOTE SANS TITRE' : note.title;
-    final content = note.content;
+    final cleanContent = stripHtmlTags(note.content);
+    final truncatedContent = _truncateContent(cleanContent);
 
     return Container(
       decoration: BoxDecoration(
@@ -1174,9 +1188,9 @@ class _NoteCreamCard extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          if (content.trim().isNotEmpty)
+          if(cleanContent.trim().isNotEmpty)
             Text(
-              content,
+              truncatedContent,
               style: TextStyle(
                 color: Theme.of(context).customColors.textColor,
                 height: 1.25,
