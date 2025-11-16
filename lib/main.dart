@@ -1,9 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 const appUrl = 'https://app.silvernote.fr/';
 
@@ -14,6 +12,7 @@ void main() {
 
 class SilverNoteApp extends StatelessWidget {
   const SilverNoteApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -46,10 +45,13 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  late final WebViewController _controller;
+  InAppWebViewController? webViewController;
   bool _online = true;
   bool _initialized = false;
+  // ignore: unused_field
   bool _canGoBack = false;
+
+  Stream<List<ConnectivityResult>>? _connStream;
 
   @override
   void initState() {
@@ -58,7 +60,6 @@ class _MainPageState extends State<MainPage> {
     _setup();
   }
 
-  Stream<List<ConnectivityResult>>? _connStream;
   void _initConnectivityListener() {
     _connStream = Connectivity().onConnectivityChanged;
     _connStream!.listen((results) async {
@@ -67,7 +68,7 @@ class _MainPageState extends State<MainPage> {
       if (mounted) setState(() => _online = reachable);
       if (reachable && _initialized) {
         try {
-          await _controller.reload();
+          await webViewController?.reload();
         } catch (_) {}
       }
     });
@@ -87,30 +88,11 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _setup() async {
     final initialConn = await Connectivity().checkConnectivity();
-    final hasNet = initialConn.any((result) => result != ConnectivityResult.none);
+    final hasNet = initialConn.any(
+      (result) => result != ConnectivityResult.none,
+    );
     final reachable = hasNet ? await _hasInternet() : false;
     setState(() => _online = reachable);
-
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) async {
-            final can = await _controller.canGoBack();
-            if (mounted) setState(() => _canGoBack = can);
-          },
-          onNavigationRequest: (req) => NavigationDecision.navigate,
-        ),
-      )
-      ..loadRequest(Uri.parse(appUrl));
-
-    if (Platform.isAndroid) {
-      final androidCtrl = _controller.platform as AndroidWebViewController;
-      await androidCtrl.setOnShowFileSelector((params) async {
-        return <String>[];
-      });
-    }
 
     setState(() => _initialized = true);
   }
@@ -121,7 +103,7 @@ class _MainPageState extends State<MainPage> {
     if (reachable) {
       if (_initialized) {
         try {
-          await _controller.reload();
+          await webViewController?.reload();
         } catch (_) {}
       } else {
         await _setup();
@@ -147,11 +129,7 @@ class _MainPageState extends State<MainPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.wifi_off_rounded,
-                  size: 120,
-                  color: cs.secondary,
-                ),
+                Icon(Icons.wifi_off_rounded, size: 120, color: cs.secondary),
                 const SizedBox(height: 24),
                 Text(
                   'Pas de connexion internet',
@@ -175,15 +153,18 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    return PopScope(
-      canPop: !_canGoBack,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        if (await _controller.canGoBack()) {
-          await _controller.goBack();
-          final can = await _controller.canGoBack();
-          if (mounted) setState(() => _canGoBack = can);
+    return WillPopScope(
+      onWillPop: () async {
+        if (webViewController != null) {
+          final canGoBack = await webViewController!.canGoBack();
+          if (canGoBack) {
+            await webViewController!.goBack();
+            final can = await webViewController!.canGoBack();
+            if (mounted) setState(() => _canGoBack = can);
+            return false;
+          }
         }
+        return true;
       },
       child: Scaffold(
         body: Column(
@@ -191,7 +172,44 @@ class _MainPageState extends State<MainPage> {
             header,
             Expanded(
               child: _initialized
-                  ? WebViewWidget(controller: _controller)
+                  ? InAppWebView(
+                      initialUrlRequest: URLRequest(
+                        url: WebUri(appUrl),
+                        headers: {'X-Custom-Header': 'flutter-app'},
+                      ),
+                      initialSettings: InAppWebViewSettings(
+                        javaScriptEnabled: true,
+                        useShouldOverrideUrlLoading: true,
+                      ),
+                      onWebViewCreated: (controller) {
+                        webViewController = controller;
+                      },
+                      onLoadStop: (controller, url) async {
+                        final can = await controller.canGoBack();
+                        if (mounted) setState(() => _canGoBack = can);
+                      },
+                      shouldOverrideUrlLoading:
+                          (controller, navigationAction) async {
+                            final uri = navigationAction.request.url;
+                            if (uri != null) {
+                              final headers = {
+                                'X-Custom-Header': 'flutter-app',
+                              };
+                              debugPrint(
+                                '[WEBVIEW] Navigation vers $uri avec headers: $headers',
+                              );
+
+                              await controller.loadUrl(
+                                urlRequest: URLRequest(
+                                  url: uri,
+                                  headers: headers,
+                                ),
+                              );
+                              return NavigationActionPolicy.CANCEL;
+                            }
+                            return NavigationActionPolicy.ALLOW;
+                          },
+                    )
                   : const Center(child: CircularProgressIndicator()),
             ),
           ],

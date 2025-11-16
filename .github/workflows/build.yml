@@ -1,4 +1,4 @@
-name: Android APK from flutter 
+name: Android APK from flutter(webview)
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
         with:
           channel: stable
 
-      - name: Flutter depedencies
+      - name: Flutter dependencies
         run: flutter pub get
 
       - name: Build debug APK
@@ -40,22 +40,30 @@ jobs:
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
 
-
       - name: Get version from pubspec.yaml
         id: get_version
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: Check if tag already exists
+        run: |
+          if git rev-parse "v${{ steps.get_version.outputs.VERSION }}" >/dev/null 2>&1; then
+            echo "Tag v${{ steps.get_version.outputs.VERSION }} already exists. Please bump version in pubspec.yaml."
+            exit 1
+          fi
 
       - name: Rename APK with version
-        run: mv build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/silvernote-${{ steps.get_version.outputs.VERSION }}-android-debug.apk
-          
+        run: |
+          mv build/app/outputs/flutter-apk/app-debug.apk \
+             build/app/outputs/flutter-apk/silvernote-${{ steps.get_version.outputs.VERSION }}-android-debug.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.get_version.outputs.VERSION }}
-          name: Silvernote (${{ steps.get_version.outputs.VERSION }})
+          name: Silvernote (v${{ steps.get_version.outputs.VERSION }})
           body: |
             Nouvelle version de Silvernote.
         env:
