@@ -177,8 +177,18 @@ class _MainPageState extends State<MainPage> {
                         url: WebUri(appUrl),
                         headers: {'X-Custom-Header': 'flutter-app'},
                       ),
+                      onLoadStart: (controller, url) async {
+                        if (url.toString().contains(
+                          "/auth/sso-callback",
+                        )) {
+                          print("OAuth finished inside WebView");
+                        }
+                      },
                       initialSettings: InAppWebViewSettings(
                         javaScriptEnabled: true,
+                        useHybridComposition: true,
+                        userAgent: "Mozilla/5.0 (Linux; Android 10; Mobile) WebViewApp",
+                        thirdPartyCookiesEnabled: true,
                         useShouldOverrideUrlLoading: true,
                       ),
                       onWebViewCreated: (controller) {
