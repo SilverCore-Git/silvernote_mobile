@@ -26,6 +26,11 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.35.3'
+      - run: flutter --version
+
+      - name: Flutter clean
+        run: flutter clean
 
       - name: Flutter dependencies
         run: flutter pub get
