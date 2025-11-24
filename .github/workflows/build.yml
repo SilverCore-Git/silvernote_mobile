@@ -27,9 +27,6 @@ jobs:
         with:
           channel: stable
 
-      - name: Flutter reset
-        run: flutter clean
-
       - name: Flutter dependencies
         run: flutter pub get
 
