@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const appUrl = 'https://app.silvernote.fr/';
 
@@ -196,27 +197,39 @@ class _MainPageState extends State<MainPage> {
                         final can = await controller.canGoBack();
                         if (mounted) setState(() => _canGoBack = can);
                       },
-                      shouldOverrideUrlLoading:
-                          (controller, navigationAction) async {
-                            final uri = navigationAction.request.url;
-                            if (uri != null) {
-                              final headers = {
-                                'X-Custom-Header': 'flutter-app',
-                              };
-                              debugPrint(
-                                '[WEBVIEW] Navigation vers $uri avec headers: $headers',
-                              );
+                      shouldOverrideUrlLoading: (controller, navigationAction) async {
+                        final uri = navigationAction.request.url;
+                        if (uri == null) {
+                          return NavigationActionPolicy.CANCEL;
+                        }
+                        final urlString = uri.toString();
+                        final isIntent = urlString.startsWith('intent://');
+                        final isCustomScheme =
+                            uri.scheme != 'http' &&
+                            uri.scheme != 'https' &&
+                            uri.scheme != 'about' &&
+                            uri.scheme != 'data';
 
-                              await controller.loadUrl(
-                                urlRequest: URLRequest(
-                                  url: uri,
-                                  headers: headers,
-                                ),
-                              );
-                              return NavigationActionPolicy.CANCEL;
-                            }
-                            return NavigationActionPolicy.ALLOW;
-                          },
+                        if (isIntent || isCustomScheme) {
+                          try {
+                            final launchUri = Uri.parse(urlString);
+                            await launchUrl(
+                              launchUri,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          } catch (_) {
+                          }
+                          return NavigationActionPolicy.CANCEL;
+                        }
+                        final headers = {'X-Custom-Header': 'flutter-app'};
+                        debugPrint(
+                          '[WEBVIEW] Navigation vers $uri avec headers: $headers',
+                        );
+                        await controller.loadUrl(
+                          urlRequest: URLRequest(url: uri, headers: headers),
+                        );
+                        return NavigationActionPolicy.CANCEL;
+                      },
                     )
                   : const Center(child: CircularProgressIndicator()),
             ),
