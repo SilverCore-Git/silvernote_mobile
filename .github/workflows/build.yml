@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build-debug-apk:
+  build-release-apk:
     runs-on: ubuntu-latest
 
     steps:
@@ -35,14 +35,14 @@ jobs:
       - name: Flutter dependencies
         run: flutter pub get
 
-      - name: Build debug APK
-        run: flutter build apk --debug
+      - name: Build release APK
+        run: flutter build apk --release
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
 
       - name: Get version from pubspec.yaml
@@ -61,8 +61,8 @@ jobs:
 
       - name: Rename APK with version
         run: |
-          mv build/app/outputs/flutter-apk/app-debug.apk \
-             build/app/outputs/flutter-apk/silvernote-${{ steps.get_version.outputs.VERSION }}-android-debug.apk
+          mv build/app/outputs/flutter-apk/app-release.apk \
+             build/app/outputs/flutter-apk/silvernote-${{ steps.get_version.outputs.VERSION }}-android-release.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -78,6 +78,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.get_version.outputs.VERSION }}
-          files: build/app/outputs/flutter-apk/silvernote-${{ steps.get_version.outputs.VERSION }}-android-debug.apk
+          files: build/app/outputs/flutter-apk/silvernote-${{ steps.get_version.outputs.VERSION }}-android-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

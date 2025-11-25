@@ -77,12 +77,11 @@ class _MainPageState extends State<MainPage> {
   Future<bool> _hasInternet() async {
     try {
       final resp = await http
-          .head(Uri.parse('https://www.google.com/generate_204'))
-          .timeout(const Duration(seconds: 3));
-      return resp.statusCode == 204 ||
-          (resp.statusCode >= 200 && resp.statusCode < 400);
+          .get(Uri.parse('https://app.silvernote.fr/'))
+          .timeout(const Duration(seconds: 5));
+      return resp.statusCode >= 200 && resp.statusCode < 400;
     } catch (_) {
-      return false;
+      return true;
     }
   }
 
@@ -178,16 +177,15 @@ class _MainPageState extends State<MainPage> {
                         headers: {'X-Custom-Header': 'flutter-app'},
                       ),
                       onLoadStart: (controller, url) async {
-                        if (url.toString().contains(
-                          "/auth/sso-callback",
-                        )) {
+                        if (url.toString().contains("/auth/sso-callback")) {
                           print("OAuth finished inside WebView");
                         }
                       },
                       initialSettings: InAppWebViewSettings(
                         javaScriptEnabled: true,
                         useHybridComposition: true,
-                        userAgent: "Mozilla/5.0 (Linux; Android 10; Mobile) WebViewApp",
+                        userAgent:
+                            "Mozilla/5.0 (Linux; Android 10; Mobile) WebViewApp",
                         thirdPartyCookiesEnabled: true,
                         useShouldOverrideUrlLoading: true,
                       ),
