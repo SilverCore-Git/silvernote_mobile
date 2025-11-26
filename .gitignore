@@ -52,3 +52,4 @@ windows/flutter/generated_plugins.cmake
 /windows/flutter/generated_plugins.cmake
 /macos/Flutter/GeneratedPluginRegistrant.swift
 android/build/reports/problems/problems-report.html
+/android/.kotlin/sessions
