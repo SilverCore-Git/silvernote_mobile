@@ -51,6 +51,7 @@ class _MainPageState extends State<MainPage> {
   InAppWebViewController? webViewController;
   bool _online = true;
   bool _initialized = false;
+  // ignore: unused_field
   bool _canGoBack = false;
 
   late final AppLinks _appLinks;
