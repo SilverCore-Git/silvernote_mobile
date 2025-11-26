@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build-release-apk:
-    runs-on: windows-latest
+  build-debug-apk:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -29,39 +29,30 @@ jobs:
           flutter-version: '3.35.3'
       - run: flutter --version
 
-      - name: Ensure gradlew permissions
-        shell: bash
-        run: |
-           if [ -f "android/gradlew" ]; then
-           chmod +x android/gradlew
-           fi
-
       - name: Flutter clean
         run: flutter clean
 
       - name: Flutter dependencies
         run: flutter pub get
 
-      - name: Build release APK
-        run: flutter build apk --release
+      - name: Build debug APK
+        run: flutter build apk --debug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: app-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
 
       - name: Get version from pubspec.yaml
         id: get_version
-        shell: bash
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Detected version: $VERSION"
 
       - name: Check if tag already exists
-        shell: bash
         run: |
           if git rev-parse "v${{ steps.get_version.outputs.VERSION }}" >/dev/null 2>&1; then
             echo "Tag v${{ steps.get_version.outputs.VERSION }} already exists. Please bump version in pubspec.yaml."
@@ -69,10 +60,9 @@ jobs:
           fi
 
       - name: Rename APK with version
-        shell: bash
         run: |
-          mv build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/silvernote-${{ steps.get_version.outputs.VERSION }}-android-release.apk
+          mv build/app/outputs/flutter-apk/app-debug.apk \
+             build/app/outputs/flutter-apk/silvernote-${{ steps.get_version.outputs.VERSION }}-android-debug.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -88,6 +78,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.get_version.outputs.VERSION }}
-          files: build/app/outputs/flutter-apk/silvernote-${{ steps.get_version.outputs.VERSION }}-android-release.apk
+          files: build/app/outputs/flutter-apk/silvernote-${{ steps.get_version.outputs.VERSION }}-android-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
