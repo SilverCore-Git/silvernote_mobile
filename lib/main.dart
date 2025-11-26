@@ -3,6 +3,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:app_links/app_links.dart';
+import 'dart:async';
 
 const appUrl = 'https://app.silvernote.fr/';
 
@@ -49,31 +51,76 @@ class _MainPageState extends State<MainPage> {
   InAppWebViewController? webViewController;
   bool _online = true;
   bool _initialized = false;
-  // ignore: unused_field
   bool _canGoBack = false;
 
-  Stream<List<ConnectivityResult>>? _connStream;
+  late final AppLinks _appLinks;
+  StreamSubscription? _linkSub;
+  StreamSubscription<List<ConnectivityResult>>? _connSub;
+  String _initialUrl = appUrl; // valeur par défaut
 
   @override
   void initState() {
     super.initState();
     _initConnectivityListener();
+    _initDeepLinks();
     _setup();
   }
 
-  void _initConnectivityListener() {
-    _connStream = Connectivity().onConnectivityChanged;
-    _connStream!.listen((results) async {
-      final hasNet = !results.contains(ConnectivityResult.none);
-      final reachable = hasNet ? await _hasInternet() : false;
-      if (mounted) setState(() => _online = reachable);
-      if (reachable && _initialized) {
-        try {
-          await webViewController?.reload();
-        } catch (_) {}
+  Future<void> _initDeepLinks() async {
+  _appLinks = AppLinks();
+
+  // cold start
+  try {
+    final initialUri = await _appLinks.getInitialLink();
+    if (initialUri != null && initialUri.host == 'app.silvernote.fr') {
+      setState(() {
+        _initialUrl = initialUri.toString();
+      });
+    }
+  } catch (_) {}
+
+  _linkSub = _appLinks.uriLinkStream.listen((uri) {
+    if (uri.host == 'app.silvernote.fr') {
+      final target = uri.toString();
+      if (webViewController != null) {
+        webViewController!.loadUrl(
+          urlRequest: URLRequest(
+            url: WebUri(target),
+            headers: {'X-Custom-Header': 'flutter-app'},
+          ),
+        );
+      } else {
+        setState(() {
+          _initialUrl = target;
+        });
       }
-    });
+    }
+  }, onError: (_) {});
+}
+
+  @override
+  void dispose() {
+  _connSub?.cancel();
+  _linkSub?.cancel();
+  super.dispose();
   }
+
+  void _initConnectivityListener() {
+  _connSub = Connectivity().onConnectivityChanged.listen((results) async {
+    final hasNet = !results.contains(ConnectivityResult.none);
+    final reachable = hasNet ? await _hasInternet() : false;
+
+    if (!mounted) return;
+
+    setState(() => _online = reachable);
+
+    if (reachable && _initialized) {
+      try {
+        await webViewController?.reload();
+      } catch (_) {}
+    }
+  });
+}
 
   Future<bool> _hasInternet() async {
     try {
@@ -174,7 +221,7 @@ class _MainPageState extends State<MainPage> {
               child: _initialized
                   ? InAppWebView(
                       initialUrlRequest: URLRequest(
-                        url: WebUri(appUrl),
+                        url: WebUri(_initialUrl),
                         headers: {'X-Custom-Header': 'flutter-app'},
                       ),
                       onLoadStart: (controller, url) async {
