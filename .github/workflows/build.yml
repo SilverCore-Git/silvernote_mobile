@@ -30,6 +30,7 @@ jobs:
       - run: flutter --version
 
       - name: Ensure gradlew permissions
+        shell: bash
         run: |
            if [ -f "android/gradlew" ]; then
            chmod +x android/gradlew
