@@ -54,12 +54,14 @@ jobs:
 
       - name: Get version from pubspec.yaml
         id: get_version
+        shell: bash
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Detected version: $VERSION"
 
       - name: Check if tag already exists
+        shell: bash
         run: |
           if git rev-parse "v${{ steps.get_version.outputs.VERSION }}" >/dev/null 2>&1; then
             echo "Tag v${{ steps.get_version.outputs.VERSION }} already exists. Please bump version in pubspec.yaml."
@@ -67,6 +69,7 @@ jobs:
           fi
 
       - name: Rename APK with version
+        shell: bash
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk \
              build/app/outputs/flutter-apk/silvernote-${{ steps.get_version.outputs.VERSION }}-android-release.apk
