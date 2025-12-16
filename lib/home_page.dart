@@ -29,16 +29,7 @@ class _HomePageState extends State<HomePage> {
   ];
   List<Note> listNotes = [];
   late List<Note> allNotesSource;
-  List<Note> sharedNotes = [
-    Note(
-      id: 3,
-      title: 'Note partagée',
-      content: 'Contenu partagé',
-      tags: [],
-      pinned: false,
-      icon: Icons.share,
-    ),
-  ];
+  List<Note> sharedNotes = [];
 
   bool ifOpenCreateTag = false;
   String tagName = '';

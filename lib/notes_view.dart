@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:html/parser.dart' as html_parser;
+import 'dart:convert';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../app_theme.dart';
 import 'note.dart';
@@ -175,6 +177,63 @@ class _NoteCreamCard extends StatelessWidget {
     }
   }
 
+  Widget _getNoteIcon(BuildContext context) {
+    if (note.icon != null && note.icon!.isNotEmpty) {
+      if (note.icon!.startsWith('data:image/svg+xml')) {
+        try {
+          final uriData = Uri.parse(note.icon!).data;
+          if (uriData != null) {
+            var svgString = uriData.contentAsString();
+            final styleRegex =
+                RegExp(r'<style.*?>.*?</style>', multiLine: true, dotAll: true);
+            svgString = svgString.replaceAll(styleRegex, '');
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: SvgPicture.string(
+                svgString,
+                width: 18,
+                height: 18,
+                fit: BoxFit.cover,
+              ),
+            );
+          }
+        } catch (e) {
+          // Fallback for parsing errors
+        }
+      } else if (note.icon!.startsWith('data:image')) {
+        try {
+          final commaIndex = note.icon!.indexOf(',');
+          if (commaIndex != -1) {
+            final base64String = note.icon!.substring(commaIndex + 1);
+            final imageBytes = base64Decode(base64String);
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Image.memory(
+                imageBytes,
+                width: 18,
+                height: 18,
+                fit: BoxFit.cover,
+              ),
+            );
+          }
+        } catch (e) {
+          // Fallback
+        }
+      } else {
+        // Assume it's an emoji
+        return Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: Text(
+            note.icon!,
+            style: const TextStyle(fontSize: 18),
+          ),
+        );
+      }
+    }
+    return const SizedBox.shrink();
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = (note.title.isEmpty) ? 'NOTE SANS TITRE' : note.title;
@@ -205,12 +264,7 @@ class _NoteCreamCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                note.icon,
-                size: 18,
-                color: Theme.of(context).customColors.textColor,
-              ),
-              const SizedBox(width: 8),
+              _getNoteIcon(context),
               Expanded(
                 child: Text(
                   title.toUpperCase(),

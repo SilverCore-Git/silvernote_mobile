@@ -1,12 +1,10 @@
-import 'package:flutter/material.dart';
-
 class Note {
   final int id;
   final String title;
   final String content;
   final List<int> tags;
   final bool pinned;
-  final IconData icon;
+  final String? icon;
 
   Note({
     required this.id,
@@ -14,6 +12,6 @@ class Note {
     required this.content,
     required this.tags,
     required this.pinned,
-    required this.icon,
+    this.icon,
   });
 }

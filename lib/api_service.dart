@@ -6,12 +6,6 @@ import 'package:http/http.dart' as http;
 import 'note.dart';
 
 extension NoteApiMapper on Note {
-  static IconData _pickIcon(String? icon, String title, String content) {
-    if (icon != null && icon.isNotEmpty) return Icons.note;
-    if (title.toLowerCase().contains('todo')) return Icons.checklist;
-    return Icons.note_alt;
-  }
-
   static Note fromApi(Map<String, dynamic> j) {
     final title = (j['title'] ?? '').toString();
     final content = (j['content'] ?? '').toString();
@@ -29,7 +23,7 @@ extension NoteApiMapper on Note {
       content: content,
       tags: tags,
       pinned: pinned,
-      icon: _pickIcon(j['icon'] as String?, title, content),
+      icon: j['icon'] as String?,
     );
   }
 }
@@ -41,7 +35,7 @@ Future<List<Note>> appelApi(BuildContext context) async {
   final userId = user?.id;
   final rippedToken = session?.lastActiveToken?.jwt;
 
-
+  
   debugPrint('appelApi: userId=$userId');
 
   if (userId == null || userId.isEmpty) {
