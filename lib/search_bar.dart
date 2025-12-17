@@ -5,7 +5,14 @@ import '../app_theme.dart';
 class SearchBarWidget extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
-  const SearchBarWidget({super.key, required this.controller, this.hintText = ''});
+  final ValueChanged<String>? onChanged;
+
+  const SearchBarWidget({
+    super.key,
+    required this.controller,
+    this.hintText = '',
+    this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +29,7 @@ class SearchBarWidget extends StatelessWidget {
         cursorColor: Theme.of(context).customColors.textColor,
         style: TextStyle(color: textColor),
         controller: controller,
+        onChanged: onChanged,
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: TextStyle(color: Theme.of(context).customColors.textColor),
@@ -35,7 +43,10 @@ class SearchBarWidget extends StatelessWidget {
                   ),
                 )
               : GestureDetector(
-                  onTap: () => controller.clear(),
+                  onTap: () {
+                    controller.clear();
+                    onChanged?.call('');
+                  },
                   child: Icon(
                     Icons.close,
                     color: Theme.of(context).customColors.textColor,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:html/parser.dart' as html_parser;
 
 import 'note.dart';
 import 'tag.dart';
@@ -46,6 +47,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    searchController.addListener(_searchNotes);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final notes = await appelApi(context);
@@ -60,8 +62,31 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    searchController.removeListener(_searchNotes);
     searchController.dispose();
     super.dispose();
+  }
+
+  String _stripHtmlTags(String htmlContent) {
+    final document = html_parser.parse(htmlContent);
+    return document.body?.text ?? '';
+  }
+
+  void _searchNotes() {
+    final query = searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        listNotes = List<Note>.from(allNotesSource);
+      } else {
+        listNotes = allNotesSource.where((note) {
+          final title = note.title.toLowerCase();
+          final content = _stripHtmlTags(note.content).toLowerCase();
+          return title.contains(query) || content.contains(query);
+        }).toList();
+      }
+      // après la recherche, on applique les filtres de tags
+      addTagFilter(null, keepActive: true);
+    });
   }
 
   Future<void> reloadList() async {
@@ -78,19 +103,34 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void addTagFilter(int tagId) {
+  void addTagFilter(int? tagId, {bool keepActive = false}) {
     setState(() {
-      final tag = allTags.firstWhere((t) => t.id == tagId);
-      tag.active = !tag.active;
+      if (tagId != null) {
+        final tag = allTags.firstWhere((t) => t.id == tagId);
+        tag.active = !tag.active;
+      }
+
       final activeIds = allTags.where((t) => t.active).map((t) => t.id).toList();
+
+      // On part de la liste potentiellement filtrée par la recherche
+      final searchFilteredNotes = allNotesSource.where((note) {
+        final query = searchController.text.toLowerCase();
+        if (query.isEmpty) return true;
+        final title = note.title.toLowerCase();
+        final content = _stripHtmlTags(note.content).toLowerCase();
+        return title.contains(query) || content.contains(query);
+      }).toList();
+
       if (activeIds.isEmpty) {
-        listNotes = List<Note>.from(allNotesSource);
-        notesViewMode = 'default'; // optionnel
+        listNotes = List<Note>.from(searchFilteredNotes);
+        notesViewMode = 'default';
         return;
       }
-      listNotes = allNotesSource.where((n) {
+
+      listNotes = searchFilteredNotes.where((n) {
         return n.tags.any((tid) => activeIds.contains(tid));
       }).toList();
+
       notesViewMode = 'default';
     });
   }
@@ -151,13 +191,14 @@ class _HomePageState extends State<HomePage> {
                 SearchBarWidget(
                   controller: searchController,
                   hintText: 'Recherche...',
+                  onChanged: (value) => _searchNotes(),
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 50,
                   child: TagList(
                     tags: allTags,
-                    onTagTap: addTagFilter,
+                    onTagTap: (tagId) => addTagFilter(tagId),
                     onAddTag: openCreateTag,
                   ),
                 ),

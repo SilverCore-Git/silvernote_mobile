@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'note.dart';
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'note.dart';
 
 class NoteCard extends StatelessWidget {
   final Note note;
