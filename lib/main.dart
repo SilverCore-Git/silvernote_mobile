@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
+import 'dart:math';
 
 const appUrl = 'https://app.silvernote.fr/';
+const bool kReleaseMode = bool.fromEnvironment('dart.vm.product');
+const bool kProfileMode = bool.fromEnvironment('dart.vm.profile');
+const bool kDebugMode = !kReleaseMode && !kProfileMode;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,13 +56,12 @@ class _MainPageState extends State<MainPage> {
   InAppWebViewController? webViewController;
   bool _online = true;
   bool _initialized = false;
-  // ignore: unused_field
-  bool _canGoBack = false;
+  bool _isRetrying = false;
 
   late final AppLinks _appLinks;
   StreamSubscription? _linkSub;
   StreamSubscription<List<ConnectivityResult>>? _connSub;
-  String _initialUrl = appUrl; // valeur par défaut
+  String _initialUrl = appUrl;
 
   @override
   void initState() {
@@ -70,7 +74,6 @@ class _MainPageState extends State<MainPage> {
   Future<void> _initDeepLinks() async {
   _appLinks = AppLinks();
 
-  // cold start
   try {
     final initialUri = await _appLinks.getInitialLink();
     if (initialUri != null && initialUri.host == 'app.silvernote.fr') {
@@ -107,21 +110,15 @@ class _MainPageState extends State<MainPage> {
   }
 
   void _initConnectivityListener() {
-  _connSub = Connectivity().onConnectivityChanged.listen((results) async {
-    final hasNet = !results.contains(ConnectivityResult.none);
-    final reachable = hasNet ? await _hasInternet() : false;
-
-    if (!mounted) return;
-
-    setState(() => _online = reachable);
-
-    if (reachable && _initialized) {
-      try {
-        await webViewController?.reload();
-      } catch (_) {}
-    }
-  });
-}
+    _connSub = Connectivity().onConnectivityChanged.listen((results) async {
+      final hasNet = !results.contains(ConnectivityResult.none);
+      final reachable = hasNet ? await _hasInternet() : false;
+      if (!mounted) return;
+      if (_online != reachable) {
+        setState(() => _online = reachable);
+      }
+    });
+  }
 
   Future<bool> _hasInternet() async {
     try {
@@ -137,26 +134,24 @@ class _MainPageState extends State<MainPage> {
   Future<void> _setup() async {
     final initialConn = await Connectivity().checkConnectivity();
     final hasNet = initialConn.any(
-      (result) => result != ConnectivityResult.none,
+          (result) => result != ConnectivityResult.none,
     );
     final reachable = hasNet ? await _hasInternet() : false;
-    setState(() => _online = reachable);
-
-    setState(() => _initialized = true);
+    if (mounted) {
+      setState(() {
+        _online = reachable;
+        _initialized = true;
+      });
+    }
   }
 
   Future<void> _retry() async {
-    final reachable = await _hasInternet();
-    if (mounted) setState(() => _online = reachable);
-    if (reachable) {
-      if (_initialized) {
-        try {
-          await webViewController?.reload();
-        } catch (_) {}
-      } else {
-        await _setup();
-      }
-    }
+    if (_isRetrying) return;
+    setState(() => _isRetrying = true);
+    final randomMs = 3000 + Random().nextInt(4001);
+    await Future.delayed(Duration(milliseconds: randomMs));
+    setState(() => _isRetrying = false);
+    if (!mounted) return;
   }
 
   @override
@@ -189,7 +184,13 @@ class _MainPageState extends State<MainPage> {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 24),
-                FilledButton.icon(
+                _isRetrying
+                    ? const SizedBox(
+                  height: 48,
+                  width: 48,
+                  child: CircularProgressIndicator(),
+                )
+                    : FilledButton.icon(
                   onPressed: _retry,
                   icon: const Icon(Icons.refresh),
                   label: const Text('Réessayer'),
@@ -200,19 +201,16 @@ class _MainPageState extends State<MainPage> {
         ),
       );
     }
-
-    return WillPopScope(
-      onWillPop: () async {
-        if (webViewController != null) {
-          final canGoBack = await webViewController!.canGoBack();
-          if (canGoBack) {
-            await webViewController!.goBack();
-            final can = await webViewController!.canGoBack();
-            if (mounted) setState(() => _canGoBack = can);
-            return false;
-          }
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final controller = webViewController;
+        if (controller != null && await controller.canGoBack()) {
+          await controller.goBack();
+        } else {
+          await SystemNavigator.pop();
         }
-        return true;
       },
       child: Scaffold(
         body: Column(
@@ -227,7 +225,10 @@ class _MainPageState extends State<MainPage> {
                       ),
                       onLoadStart: (controller, url) async {
                         if (url.toString().contains("/auth/sso-callback")) {
-                          print("OAuth finished inside WebView");
+                          if (kDebugMode) {
+                            // ignore: avoid_print
+                            print("OAuth finished inside WebView");
+                          }
                         }
                       },
                       initialSettings: InAppWebViewSettings(
@@ -240,10 +241,6 @@ class _MainPageState extends State<MainPage> {
                       ),
                       onWebViewCreated: (controller) {
                         webViewController = controller;
-                      },
-                      onLoadStop: (controller, url) async {
-                        final can = await controller.canGoBack();
-                        if (mounted) setState(() => _canGoBack = can);
                       },
                       shouldOverrideUrlLoading: (controller, navigationAction) async {
                         final uri = navigationAction.request.url;
@@ -270,9 +267,6 @@ class _MainPageState extends State<MainPage> {
                           return NavigationActionPolicy.CANCEL;
                         }
                         final headers = {'X-Custom-Header': 'flutter-app'};
-                        debugPrint(
-                          '[WEBVIEW] Navigation vers $uri avec headers: $headers',
-                        );
                         await controller.loadUrl(
                           urlRequest: URLRequest(url: uri, headers: headers),
                         );

@@ -1,10 +1,10 @@
 name: silvernote
-description: "A new Flutter project."
+description: "Prenez, organisez et retrouvez vos notes simplement avec Silvernote."
 publish_to: 'none'
-version: 0.0.17
+version: 0.1.0
 
 environment:
-  sdk: ^3.9.2
+  sdk: '>=3.9.2 <4.0.0'
 
 dependencies:
   connectivity_plus: ^7.0.0
@@ -17,7 +17,7 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_inappwebview: ^6.1.5
   url_launcher: ^6.3.2
-  app_links: ^6.3.3  # ou dernière version dispo
+  app_links: ^6.3.3
 
 
 dev_dependencies:
