@@ -31,7 +31,7 @@ class SilverNoteApp extends StatelessWidget {
           seedColor: const Color(0xFFF28C28),
           brightness: Brightness.light,
         ),
-        scaffoldBackgroundColor: Colors.white,
+        scaffoldBackgroundColor: const Color(0xFFFFF8F0),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
