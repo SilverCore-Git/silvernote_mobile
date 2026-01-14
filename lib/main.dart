@@ -156,10 +156,16 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top - 7.5;
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final topPadding = MediaQuery.of(context).padding.top;
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      statusBarColor: theme.scaffoldBackgroundColor,
+      statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+    ));
     final header = Container(
       height: topPadding,
-      color: const Color(0xFFF28C28),
+      color: theme.scaffoldBackgroundColor,
     );
 
     if (!_online) {
