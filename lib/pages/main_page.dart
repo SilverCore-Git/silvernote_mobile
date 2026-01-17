@@ -126,6 +126,7 @@ class _MainPageState extends State<MainPage> {
     final customColors = theme.extension<AppCustomColors>()!;
     final isDarkMode = theme.brightness == Brightness.dark;
     final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       statusBarColor: theme.scaffoldBackgroundColor,
       statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
@@ -133,6 +134,11 @@ class _MainPageState extends State<MainPage> {
     final header = Container(
       height: topPadding,
       color: theme.scaffoldBackgroundColor,
+    );
+
+    final bottomBar = Container(
+      height: bottomPadding + -5,
+      color: customColors.bottomBarColor,
     );
 
     if (!_online) {
@@ -248,6 +254,7 @@ class _MainPageState extends State<MainPage> {
               )
                   : const Center(child: CircularProgressIndicator()),
             ),
+            bottomBar,
           ],
         ),
       ),
