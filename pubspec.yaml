@@ -17,7 +17,7 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_inappwebview: ^6.1.5
   url_launcher: ^6.3.2
-  app_links: ^6.3.3
+  app_links: ^7.0.0
   device_info_plus: ^12.3.0
 
 

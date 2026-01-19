@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-// 1. DÉFINIR LA CLASSE POUR VOS COULEURS PERSONNALISÉES
-// Elle hérite de ThemeExtension pour être fusionnée avec le thème global.
 @immutable
 class AppCustomColors extends ThemeExtension<AppCustomColors> {
   const AppCustomColors({
