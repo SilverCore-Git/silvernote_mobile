@@ -136,8 +136,10 @@ class _MainPageState extends State<MainPage> {
       color: theme.scaffoldBackgroundColor,
     );
 
+    final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+
     final bottomBar = Container(
-      height: bottomPadding + -5,
+      height: isKeyboardVisible ? 0 : max(5.0, bottomPadding),
       color: customColors.bottomBarColor,
     );
 
