@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 import '../config/app_constants.dart';
 import '../config/app_theme.dart';
@@ -23,6 +24,7 @@ class _MainPageState extends State<MainPage> {
   bool _online = true;
   bool _initialized = false;
   bool _isRetrying = false;
+  String _customUserAgent = "";
 
   late final AppLinks _appLinks;
   StreamSubscription? _linkSub;
@@ -99,13 +101,24 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _setup() async {
     final initialConn = await Connectivity().checkConnectivity();
-    final hasNet = initialConn.any(
-          (result) => result != ConnectivityResult.none,
-    );
+    final hasNet = initialConn.any((result) => result != ConnectivityResult.none);
     final reachable = hasNet ? await _hasInternet() : false;
+    final deviceInfo = DeviceInfoPlugin();
+    final androidInfo = await deviceInfo.androidInfo;
+    final release = androidInfo.version.release;
+    final model = androidInfo.model;
+    final buildId = androidInfo.id;
+    final String dynamicUA =
+        "Mozilla/5.0 (SilvernoteApp; Android $release; $model Build/$buildId) "
+        "SilvernoteApp"
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.6099.210 "
+        "Mobile Safari/537.36"
+        ;
     if (mounted) {
       setState(() {
         _online = reachable;
+        _customUserAgent = dynamicUA;
         _initialized = true;
       });
     }
@@ -215,8 +228,7 @@ class _MainPageState extends State<MainPage> {
                 initialSettings: InAppWebViewSettings(
                   javaScriptEnabled: true,
                   useHybridComposition: true,
-                  userAgent:
-                  "Mozilla/5.0 (Linux; Android 10; Mobile) WebViewApp",
+                  userAgent: _customUserAgent,
                   thirdPartyCookiesEnabled: true,
                   useShouldOverrideUrlLoading: true,
                 ),
