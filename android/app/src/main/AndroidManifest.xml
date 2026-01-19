@@ -2,7 +2,7 @@
 <uses-permission android:name="android.permission.INTERNET" />
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
-        android:label="silvernote"
+        android:label="Silvernote"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <meta-data android:name="android.webkit.WebView.EnableSafeBrowsing" android:value="true"/>
