@@ -109,7 +109,7 @@ class _MainPageState extends State<MainPage> {
     final model = androidInfo.model;
     final buildId = androidInfo.id;
     final String dynamicUA =
-        "Mozilla/5.0 (SilvernoteApp; Android $release; $model Build/$buildId) "
+        "Mozilla/5.0 (Appareil mobile $model; Android $release; $model Build/$buildId) "
         "SilvernoteApp"
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/120.0.6099.210 "
