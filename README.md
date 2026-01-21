@@ -22,3 +22,11 @@ Organisez vos idées avec des dossiers et des tags, sur tous vos appareils.
 ## Contributions
 
 Nous n’acceptons pas de contributions : Silvernote est un projet interne à Silvercore.
+
+## Licence
+
+© 2026 Silvercore. Tous droits réservés.
+
+Ce code est mis à disposition publiquement pour des raisons de transparence uniquement. 
+Aucune autorisation d'utilisation, de modification ou de redistribution n'est accordée.
+Voir le fichier [LICENSE](LICENSE) pour plus de détails.
