@@ -19,16 +19,6 @@ L'application sera par la suite disponnible sur le PlayStore.
 Silvernote est une application de prise de notes moderne, rapide et sécurisée.
 Organisez vos idées avec des dossiers et des tags, sur tous vos appareils.
 
-## Deploiement
-
-Pour tester ce projet en local, exécutez la commande suivante après avoir cloné le dépôt.
-
-⚠️ Assurez-vous d’avoir installé le SDK Flutter sur votre machine au préalable. ⚠️
-
-```bash
-  Flutter run
-```
-
 ## Contributions
 
 Nous n’acceptons pas de contributions : Silvernote est un projet interne à Silvercore.
