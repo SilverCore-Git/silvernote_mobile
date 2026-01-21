@@ -1,4 +1,4 @@
-[English](README.en.md) | **Français**
+**Français** | [English](README.en.md)
 
 <h1>
   <img src="https://play-lh.googleusercontent.com/fGWd0Ql2_pc9uKZZIyeVFv-un0Ivzy9-oYLcoPrIRy6NyYG4pXQfEwOj5L3Sq3bnyTNciKU4wxk0_om5k2It0g=w480-h960" alt="Logo Silvernote" width="23" />
