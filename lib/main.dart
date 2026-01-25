@@ -1,7 +1,10 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'config/app_theme.dart';
-import 'pages/main_page.dart';
+import 'pages/main_page_android.dart';
+import 'pages/main_page_windows.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +20,29 @@ class SilverNoteApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       theme: lightTheme,
       darkTheme: darkTheme,
-      home: const MainPage(),
+      home: _buildHomePage(),
     );
+  }
+
+  Widget _buildHomePage() {
+    if (kIsWeb) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Web non supporté pour le moment'),
+        ),
+      );
+    }
+
+    if (Platform.isWindows) {
+      return const MainPageWindows();
+    } else if (Platform.isAndroid) {
+      return const MainPage();
+    } else {
+      return Scaffold(
+        body: Center(
+          child: Text('Plateforme ${Platform.operatingSystem} non supportée'),
+        ),
+      );
+    }
   }
 }
