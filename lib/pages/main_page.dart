@@ -39,20 +39,20 @@ class _MainPageState extends State<MainPage> {
     _setup();
   }
 
-  Future<void> _initDeepLinks() async {
-    _appLinks = AppLinks();
 
+  Future _initDeepLinks() async {
+    _appLinks = AppLinks();
+    final appDomain = Uri.parse(appUrl).host;
     try {
       final initialUri = await _appLinks.getInitialLink();
-      if (initialUri != null && initialUri.host == appUrl) {
+      if (initialUri != null && initialUri.host == appDomain) {
         setState(() {
           _initialUrl = initialUri.toString();
         });
       }
     } catch (_) {}
-
     _linkSub = _appLinks.uriLinkStream.listen((uri) {
-      if (uri.host == appUrl) {
+      if (uri.host == appDomain) {
         final target = uri.toString();
         if (webViewController != null) {
           webViewController!.loadUrl(
