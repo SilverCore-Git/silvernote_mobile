@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-
 import 'config/app_theme.dart';
 import 'pages/main_page.dart';
 
