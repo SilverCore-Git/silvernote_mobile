@@ -8,6 +8,8 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import '../config/ReviewService.dart';
+import 'package:home_widget/home_widget.dart';
 
 import '../config/app_constants.dart';
 import '../config/app_theme.dart';
@@ -39,35 +41,170 @@ class _MainPageState extends State<MainPage> {
     _setup();
   }
 
+  Future<void> _updateHomeScreenWidget() async {
+    await HomeWidget.saveWidgetData<String>('url', 'https://app.silvernote.fr/edit/new');
 
-  Future _initDeepLinks() async {
+    await HomeWidget.updateWidget(
+      name: 'SilverNoteWidgetProvider',
+      androidName: 'widget_layout',
+    );
+  }
+
+  Future<void> _checkReviewPopup() async {
+    final service = ReviewService();
+    var settings = await service.readSettings();
+
+    if (settings['neverShowAgain'] == true) return;
+
+    int currentCounter = settings['counter'];
+
+    if (currentCounter <= 0) {
+      Future.delayed(const Duration(seconds: 2), () => _showReviewDialog());
+    } else {
+      await service.saveSettings(currentCounter - 1, false);
+    }
+  }
+
+  void _showReviewDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final theme = Theme.of(context);
+
+        return AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(35)),
+          title: const Icon(Icons.stars_rounded, size: 45, color: Color(0xFFF28C28)),
+
+          contentPadding: const EdgeInsets.fromLTRB(40, 20, 40, 45),
+
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Vous aimez SilverNote ?',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Votre avis nous aide énormément à améliorer l\'application !',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15),
+              ),
+            ],
+          ),
+
+          actionsPadding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
+
+          actions: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () async {
+                        await ReviewService().saveSettings(5, false);
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                      child: const Text('Peut-être plus tard', style: TextStyle(fontSize: 14)),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () async {
+                        await ReviewService().saveSettings(0, true);
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                      child: Text(
+                        'Ne plus me le rappeler',
+                        style: TextStyle(color: theme.colorScheme.outline, fontSize: 11),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const Spacer(),
+
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
+                  onPressed: () async {
+                    final url = Uri.parse("https://play.google.com/store/apps/details?id=fr.silvercore.silvernote");
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
+                    await ReviewService().saveSettings(15, false);
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  child: const Text('Avec plaisir !'),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _initDeepLinks() async {
     _appLinks = AppLinks();
-    final appDomain = Uri.parse(appUrl).host;
+
     try {
       final initialUri = await _appLinks.getInitialLink();
-      if (initialUri != null && initialUri.host == appDomain) {
-        setState(() {
-          _initialUrl = initialUri.toString();
-        });
-      }
-    } catch (_) {}
-    _linkSub = _appLinks.uriLinkStream.listen((uri) {
-      if (uri.host == appDomain) {
-        final target = uri.toString();
-        if (webViewController != null) {
-          webViewController!.loadUrl(
-            urlRequest: URLRequest(
-              url: WebUri(target),
-              headers: {'X-Custom-Header': 'flutter-app'},
-            ),
-          );
-        } else {
+      if (initialUri != null) {
+        debugPrint("Lien au démarrage détecté : $initialUri");
+
+        String urlToLoad = initialUri.toString();
+        if (urlToLoad.contains("silvernote://")) {
+          urlToLoad = "https://app.silvernote.fr/edit/new";
+        }
+
+        if (mounted) {
           setState(() {
-            _initialUrl = target;
+            _initialUrl = urlToLoad;
+            _initialized = true;
           });
         }
       }
-    }, onError: (_) {});
+    } catch (e) {
+      debugPrint("Erreur initial link: $e");
+    }
+
+    _linkSub = _appLinks.uriLinkStream.listen((uri) {
+      debugPrint("Lien reçu en cours de route : $uri");
+      String target = uri.toString();
+
+      if (target.contains("silvernote://")) {
+        target = "https://app.silvernote.fr/edit/new";
+      }
+
+      webViewController?.loadUrl(
+        urlRequest: URLRequest(
+          url: WebUri(target),
+          headers: {'X-Custom-Header': 'flutter-app'},
+        ),
+      );
+    });
   }
 
   @override
@@ -121,7 +258,10 @@ class _MainPageState extends State<MainPage> {
         _customUserAgent = dynamicUA;
         _initialized = true;
       });
+
+      _checkReviewPopup();
     }
+    _updateHomeScreenWidget();
   }
 
   Future<void> _retry() async {
@@ -237,33 +377,14 @@ class _MainPageState extends State<MainPage> {
                 },
                 shouldOverrideUrlLoading: (controller, navigationAction) async {
                   final uri = navigationAction.request.url;
-                  if (uri == null) {
-                    return NavigationActionPolicy.CANCEL;
-                  }
-                  final urlString = uri.toString();
-                  final isIntent = urlString.startsWith('intent://');
-                  final isCustomScheme =
-                      uri.scheme != 'http' &&
-                          uri.scheme != 'https' &&
-                          uri.scheme != 'about' &&
-                          uri.scheme != 'data';
+                  if (uri == null) return NavigationActionPolicy.CANCEL;
 
-                  if (isIntent || isCustomScheme) {
-                    try {
-                      final launchUri = Uri.parse(urlString);
-                      await launchUrl(
-                        launchUri,
-                        mode: LaunchMode.externalApplication,
-                      );
-                    } catch (_) {
-                    }
+                  if (uri.scheme != 'http' && uri.scheme != 'https') {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
                     return NavigationActionPolicy.CANCEL;
                   }
-                  final headers = {'X-Custom-Header': 'flutter-app'};
-                  await controller.loadUrl(
-                    urlRequest: URLRequest(url: uri, headers: headers),
-                  );
-                  return NavigationActionPolicy.CANCEL;
+
+                  return NavigationActionPolicy.ALLOW;
                 },
               )
                   : const Center(child: CircularProgressIndicator()),
