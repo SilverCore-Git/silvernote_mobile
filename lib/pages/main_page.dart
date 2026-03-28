@@ -286,26 +286,6 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final customColors = theme.extension<AppCustomColors>()!;
-    final isDarkMode = theme.brightness == Brightness.dark;
-    final topPadding = MediaQuery.of(context).padding.top;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      statusBarColor: theme.scaffoldBackgroundColor,
-      statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
-    ));
-    final header = Container(
-      height: topPadding,
-      color: theme.scaffoldBackgroundColor,
-    );
-
-    final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-
-    final bottomBar = Container(
-      height: isKeyboardVisible ? 0 : max(5.0, bottomPadding),
-      color: customColors.bottomBarColor,
-    );
-
     if (!_online) {
       final cs = Theme.of(context).colorScheme;
       return Scaffold(
@@ -345,6 +325,11 @@ class _MainPageState extends State<MainPage> {
         ),
       );
     }
+
+    final bool isDarkMode = theme.brightness == Brightness.dark;
+    final Color topBarColor = isDarkMode ? const Color(0xFF121212) : const Color(0xFFF5F2ED);
+    final Color bottomBarColor = isDarkMode ? const Color(0xFF1E1E1E) : const Color(0xFFEFE9E0);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -357,9 +342,20 @@ class _MainPageState extends State<MainPage> {
         }
       },
       child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
         body: Column(
           children: [
-            header,
+            // --- LA BARRE DU HAUT ---
+            Container(
+              color: topBarColor,
+              child: const SafeArea(
+                top: true,
+                bottom: false,
+                child: SizedBox(width: double.infinity),
+              ),
+            ),
+
+            // --- LA WEBVIEW (Prend tout l'espace restant) ---
             Expanded(
               child: _initialized
                   ? InAppWebView(
@@ -368,12 +364,7 @@ class _MainPageState extends State<MainPage> {
                   headers: {'X-Custom-Header': 'flutter-app'},
                 ),
                 onLoadStart: (controller, url) async {
-                  if (url.toString().contains("/auth/sso-callback")) {
-                    if (kDebugMode) {
-                      // ignore: avoid_print
-                      print("OAuth finished inside WebView");
-                    }
-                  }
+                  // ... ton code de callback ...
                 },
                 initialSettings: InAppWebViewSettings(
                   javaScriptEnabled: true,
@@ -388,18 +379,26 @@ class _MainPageState extends State<MainPage> {
                 shouldOverrideUrlLoading: (controller, navigationAction) async {
                   final uri = navigationAction.request.url;
                   if (uri == null) return NavigationActionPolicy.CANCEL;
-
                   if (uri.scheme != 'http' && uri.scheme != 'https') {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                     return NavigationActionPolicy.CANCEL;
                   }
-
                   return NavigationActionPolicy.ALLOW;
                 },
               )
                   : const Center(child: CircularProgressIndicator()),
             ),
-            bottomBar,
+            Transform.translate(
+              offset: const Offset(0, -1),
+              child: Container(
+                color: bottomBarColor,
+                child: const SafeArea(
+                  top: false,
+                  bottom: true,
+                  child: SizedBox(width: double.infinity),
+                ),
+              ),
+            ),
           ],
         ),
       ),
