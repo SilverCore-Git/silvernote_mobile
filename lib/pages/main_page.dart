@@ -12,7 +12,6 @@ import '../config/ReviewService.dart';
 import 'package:home_widget/home_widget.dart';
 
 import '../config/app_constants.dart';
-import '../config/app_theme.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
