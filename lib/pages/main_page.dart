@@ -72,13 +72,39 @@ class _MainPageState extends State<MainPage> {
       builder: (context) {
         final theme = Theme.of(context);
 
+        Color dialogBgColor = Color(0xFF252525);
+        if (theme.scaffoldBackgroundColor == const Color(0xFF121212)) {
+          dialogBgColor = const Color(0xFF252525);
+        } else if (theme.scaffoldBackgroundColor == const Color(0xFFFFF8F0)) {
+          dialogBgColor = theme.scaffoldBackgroundColor;
+        }
+
         return AlertDialog(
+          backgroundColor: dialogBgColor,
           insetPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(35)),
-          title: const Icon(Icons.stars_rounded, size: 45, color: Color(0xFFF28C28)),
 
-          contentPadding: const EdgeInsets.fromLTRB(40, 20, 40, 45),
+          titlePadding: EdgeInsets.zero,
+          title: Column(
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8, right: 8),
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey, size: 22),
+                    onPressed: () async {
+                      await ReviewService().saveSettings(5, false);
+                      if (context.mounted) Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ),
+              const Icon(Icons.stars_rounded, size: 45, color: Color(0xFFF28C28)),
+            ],
+          ),
 
+          contentPadding: const EdgeInsets.fromLTRB(40, 10, 40, 45),
           content: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -97,10 +123,9 @@ class _MainPageState extends State<MainPage> {
           ),
 
           actionsPadding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
-
           actions: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,28 +139,12 @@ class _MainPageState extends State<MainPage> {
                         visualDensity: VisualDensity.compact,
                       ),
                       onPressed: () async {
-                        await ReviewService().saveSettings(5, false);
-                        if (context.mounted) Navigator.pop(context);
-                      },
-                      child: const Text('Peut-être plus tard', style: TextStyle(fontSize: 14)),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(0, 0),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      onPressed: () async {
                         await ReviewService().saveSettings(0, true);
                         if (context.mounted) Navigator.pop(context);
                       },
                       child: Text(
                         'Ne plus me le rappeler',
-                        style: TextStyle(color: theme.colorScheme.outline, fontSize: 11),
+                        style: TextStyle(color: theme.colorScheme.outline, fontSize: 14),
                       ),
                     ),
                   ],
@@ -145,8 +154,9 @@ class _MainPageState extends State<MainPage> {
 
                 FilledButton(
                   style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFF28C28),
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () async {
                     final url = Uri.parse("https://play.google.com/store/apps/details?id=fr.silvercore.silvernote");
@@ -156,7 +166,7 @@ class _MainPageState extends State<MainPage> {
                     await ReviewService().saveSettings(15, false);
                     if (context.mounted) Navigator.pop(context);
                   },
-                  child: const Text('Avec plaisir !'),
+                  child: Text('Avec plaisir !', style :TextStyle(color: Colors.white)),
                 ),
               ],
             ),
