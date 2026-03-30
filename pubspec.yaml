@@ -1,6 +1,7 @@
 name: silvernote
 description: "Prenez, organisez et retrouvez vos notes simplement avec Silvernote."
 publish_to: 'none'
+#remember to commit new version number
 version: 1.0.0+12
 
 environment:
