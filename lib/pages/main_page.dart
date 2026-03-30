@@ -353,8 +353,6 @@ class _MainPageState extends State<MainPage> {
                 child: SizedBox(width: double.infinity),
               ),
             ),
-
-            // --- LA WEBVIEW (Prend tout l'espace restant) ---
             Expanded(
               child: _initialized
                   ? InAppWebView(
@@ -363,7 +361,12 @@ class _MainPageState extends State<MainPage> {
                   headers: {'X-Custom-Header': 'flutter-app'},
                 ),
                 onLoadStart: (controller, url) async {
-                  // ... ton code de callback ...
+                  if (url.toString().contains("/auth/sso-callback")) {
+                    if (kDebugMode) {
+                      // ignore: avoid_print
+                      print("OAuth finished inside WebView");
+                    }
+                  }
                 },
                 initialSettings: InAppWebViewSettings(
                   javaScriptEnabled: true,

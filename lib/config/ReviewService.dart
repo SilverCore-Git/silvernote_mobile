@@ -16,7 +16,7 @@ class ReviewService {
       final file = await _localFile;
       if (!await file.exists()) {
         if (kDebugMode) {
-          print("📂 Fichier JSON inexistant. Création des valeurs par défaut.");
+          print("Fichier JSON inexistant. Création des valeurs par défaut.");
         }
         return {'counter': 3, 'neverShowAgain': false};
       }
@@ -27,7 +27,7 @@ class ReviewService {
         print("----------------------------------");
       }
       if (kDebugMode) {
-        print("📊 DEBUG REVIEW SERVICE :");
+        print("DEBUG REVIEW SERVICE :");
       }
       if (kDebugMode) {
         print("Contenu brut : $contents");
@@ -36,7 +36,7 @@ class ReviewService {
       return json.decode(contents);
     } catch (e) {
       if (kDebugMode) {
-        print("❌ Erreur lors de la lecture du JSON : $e");
+        print("Erreur lors de la lecture du JSON : $e");
       }
       return {'counter': 3, 'neverShowAgain': false};
     }
@@ -50,7 +50,7 @@ class ReviewService {
     });
 
     if (kDebugMode) {
-      print("💾 Sauvegarde des réglages review : $data");
+      print("Sauvegarde des réglages review : $data");
     }
 
     await file.writeAsString(data);
