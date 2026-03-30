@@ -256,11 +256,14 @@ class _MainPageState extends State<MainPage> {
     final buildId = androidInfo.id;
     final String dynamicUA =
         "Mozilla/5.0 (Appareil mobile $model; Android $release; $model Build/$buildId) "
-        "SilvernoteApp"
+        "SilvernoteApp "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/120.0.6099.210 "
         "Mobile Safari/537.36"
         ;
+    if (kDebugMode) {
+      print(dynamicUA);
+    }
     if (mounted) {
       setState(() {
         _online = reachable;
